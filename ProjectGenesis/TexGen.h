@@ -4,7 +4,7 @@
 #include <memory.h>
 #include <stdlib.h>
 #include <windows.h>
-#include <gl\gl.h>
+#include <GL/gl.h>
 
 #define pi 3.141592654
 #define radtheta 0.017453292

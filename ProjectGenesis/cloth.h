@@ -2,8 +2,8 @@
 #define __cloth__
 
 #include <windows.h>
-#include <gl\gl.h>
-#include <gl\glu.h>
+#include <GL/gl.h>
+#include <GL/glu.h>
 #include "vectors.h"
 
 void initcloth();

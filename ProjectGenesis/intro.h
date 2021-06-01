@@ -5,8 +5,8 @@
 
 #include "player.h"
 #include <windows.h>
-#include <gl\gl.h>
-#include <gl\glu.h>
+#include <GL/gl.h>
+#include <GL/glu.h>
 #include "vectors.h"
 #include "introwindow.h"
 #include "introengine.h"

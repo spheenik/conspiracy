@@ -2,8 +2,8 @@
 #define __introengine__
 
 #include <windows.h>
-#include <gl\gl.h>
-#include <gl\glu.h>
+#include <GL/gl.h>
+#include <GL/glu.h>
 #include "vectors.h"
 #include "track.h"
 #include "texgen.h"
