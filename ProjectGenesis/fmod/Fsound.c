@@ -11,11 +11,11 @@
 /******************************************************************************/
 
 #include "minifmod.h"
-#include "mixer.h"
+#include "Mixer.h"
 #include "mixer_clipcopy.h"
 #include "mixer_fpu_ramp.h"
-#include "music.h"
-#include "sound.h"
+#include "Music.h"
+#include "Sound.h"
 #include "system_memory.h"
 
 #include <windows.h>

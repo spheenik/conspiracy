@@ -10,7 +10,7 @@
 /* This source must not be redistributed without this notice.                 */
 /******************************************************************************/
 
-#include "sound.h"
+#include "Sound.h"
 
 static unsigned long mix_temp1		= 0;
 static const float	 mix_3times2pow51 = 3.0f * (float)(1L<<25) * (float)(1L<<26);

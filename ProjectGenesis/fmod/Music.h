@@ -13,7 +13,7 @@
 #ifndef _MUSIC_H
 #define _MUSIC_H
 
-#include "sound.h"
+#include "Sound.h"
 
 #define FMUSIC_FLAGS_NORMALVOLUMESLIDES	0
 #define FMUSIC_FLAGS_FASTVOLUMESLIDES		1

@@ -5,8 +5,8 @@
 #include <GL/gl.h>
 #include <GL/glu.h>
 #include "vectors.h"
-#include "track.h"
-#include "texgen.h"
+#include "Track.h"
+#include "TexGen.h"
 #include "introplayer.h"
 
 #define aDDict_default             0

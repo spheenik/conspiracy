@@ -8,7 +8,7 @@
 #include <GL/gl.h>
 #include <GL/glu.h>
 #include "vectors.h"
-#include "introwindow.h"
+#include "IntroWindow.h"
 #include "introengine.h"
 #include "introinput.h"
 #include "introplayer.h"

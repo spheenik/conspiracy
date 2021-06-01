@@ -14,10 +14,10 @@
 #include <math.h>
 
 #include "minifmod.h"
-#include "mixer.h"
-#include "music.h"
+#include "Mixer.h"
+#include "Music.h"
 #include "music_formatxm.h"
-#include "sound.h"
+#include "Sound.h"
 
 #include "xmeffects.h"
 

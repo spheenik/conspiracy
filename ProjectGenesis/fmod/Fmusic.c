@@ -13,7 +13,7 @@
 #include "minifmod.h"
 
 #include "music_formatxm.h"
-#include "sound.h"
+#include "Sound.h"
 #include "system_memory.h"
 
 FMUSIC_MODULE *		FMUSIC_PlayingSong = NULL;

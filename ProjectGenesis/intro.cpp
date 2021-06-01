@@ -22,7 +22,7 @@
 #include "intro.h"
 #include "genesis.h"
 #include "pgprecalc.h"
-#include "setupdialog.h"
+#include "SetupDialog.h"
 #include "resource.h"
 
 int time,lasttime;
