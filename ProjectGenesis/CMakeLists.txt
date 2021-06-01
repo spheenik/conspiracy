@@ -18,3 +18,5 @@ add_executable(project-genesis
         player.cpp
         synth.cpp
         )
+
+target_include_directories(project-genesis PUBLIC ../port/include)
