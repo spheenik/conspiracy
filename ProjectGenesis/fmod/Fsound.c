@@ -45,6 +45,15 @@ volatile int			FSOUND_Software_FillBlock		= 0;
 volatile int			FSOUND_Software_RealBlock		= 0;
 
 
+UINT
+waveOutOpen(HWAVEOUT *pHwaveout, UINT i, WAVEFORMATEX *pWaveformatex, int i1,
+            int i2, int i3);
+
+void waveOutReset(HWAVEOUT pHwaveout);
+
+void waveOutClose(HWAVEOUT pHwaveout);
+
+void waveOutGetPosition(HWAVEOUT pHwaveout, MMTIME *pTag, size_t i);
 
 /*
 [API]
@@ -172,7 +181,6 @@ void FSOUND_Close()
 
 	waveOutClose(FSOUND_WaveOutHandle);
 }
-
 
 
 

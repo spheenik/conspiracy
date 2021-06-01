@@ -709,6 +709,8 @@ void mixmap(texture &t, texturecommand incmnd)
 void text(texture &t, texturecommand incmnd)
 
 {
+    /*
+
  int zx,zy,i;
  rgba ss;
  char *s = new(char[256]);
@@ -761,6 +763,7 @@ void text(texture &t, texturecommand incmnd)
       t.layers[incmnd.layer][zy][256-zx].b=(byte)(min(ss.b+t.layers[incmnd.layer][zy][256-zx].b,255.0));
      }
 
+     */
 }
 
 void performcommand(texture &t, texturecommand incmnd)

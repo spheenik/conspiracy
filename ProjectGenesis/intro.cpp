@@ -53,7 +53,9 @@ void swap()
 	pscenelist=(scene*)buffer;
 }
 
-void __stdcall prepre(float f) 
+void TranslateMessage(MSG *pMsg);
+
+void __stdcall prepre(float f)
 {
 	if (PeekMessage(&msg,NULL,0,0,PM_REMOVE))
 	{

@@ -1,0 +1,6 @@
+#ifndef CONSPIRACY_TIMEAPI_H
+#define CONSPIRACY_TIMEAPI_H
+
+INT timeGetTime();
+
+#endif //CONSPIRACY_TIMEAPI_H

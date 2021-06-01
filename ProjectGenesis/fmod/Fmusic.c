@@ -26,6 +26,10 @@ FMUSIC_INSTRUMENT		FMUSIC_DummyInstrument;
 //= PRIVATE FUNCTIONS ==============================================================================
 
 
+void waveOutPrepareHeader(HWAVEOUT pHwaveout, WAVEHDR *pTag, size_t i);
+
+void waveOutWrite(HWAVEOUT pHwaveout, WAVEHDR *pTag, size_t i);
+
 /*
 [
 	[DESCRIPTION]
