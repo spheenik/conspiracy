@@ -1,6 +1,8 @@
 #ifndef CONSPIRACY_WINDOWS_H
 #define CONSPIRACY_WINDOWS_H
 
+#define CONSPIRACY_LINUX
+
 #include <string.h>
 #include <unistd.h>
 #include "types.h"

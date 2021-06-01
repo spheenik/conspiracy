@@ -44,13 +44,22 @@ void FSOUND_MixerClipCopy_Float32(void *dest, void *src, long len)
 	for (count=0; count<len<<1; count++)
 	{
 		int val;
-		__asm
+#ifdef CONSPIRACY_LINUX
+        __asm(
+        "flds (%0)\n"
+        "add 4, %0\n"
+        "fistps %1\n"
+        : "+r" (srcptr), "=m" (val)
+        );
+#elif
+        __asm
 		{
 			mov eax, srcptr
 			fld [eax]
 			add srcptr, 4
 			fistp val
 		}
+#endif
 		*destptr++ = (val < -32768 ? -32768 : val > 32767 ? 32767 : val);
 	}
 		
