@@ -28,6 +28,9 @@ HICON LoadIcon(HINSTANCE hInstance,LPCTSTR lpIconName);
 
 #define MAKEINTRESOURCE(i) ((LPCTSTR)i)
 
-#define VK_ESCAPE 27
+#define VK_ESCAPE (27)
+
+#define TRUE (1)
+#define FALSE (0)
 
 #endif //CONSPIRACY_WINDOWS_H

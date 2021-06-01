@@ -10,8 +10,8 @@ set(SOURCE_FILES
         introgen.cpp
         introinput.cpp
         introplayer.cpp
-        #IntroWindow.cpp
-        #SetupDialog.cpp
+        IntroWindowLinux.cpp
+        SetupDialogLinux.cpp
         TexGen.cpp
         Track.cpp
         vectors.cpp
@@ -23,7 +23,6 @@ set(SOURCE_FILES
         fmod/music_formatxm.c
         player.cpp
         synth.cpp
-        music.o
         )
 
 set_source_files_properties(fmod/mixer_fpu_ramp.asm PROPERTIES LANGUAGE ASM_NASM)
