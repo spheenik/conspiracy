@@ -21,7 +21,7 @@ GLvoid KillGLWindow(GLvoid)
 	ShowCursor(TRUE);
 }
 
-BOOL Intro_CreateWindow(char* title, int width, int height, int bits, bool fullscreenflag, HICON icon, bool aontop)
+BOOL Intro_CreateWindow(const char* title, int width, int height, int bits, bool fullscreenflag, HICON icon, bool aontop)
 {
 	xres=width;
 	yres=height;

@@ -4,7 +4,7 @@
 #endif
 #include "TexGen.h"
 
-char *fonts[8];
+const char *fonts[8];
 
 rgba buffer[256][256];
 float distbuf[256][256];
