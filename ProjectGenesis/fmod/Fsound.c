@@ -98,6 +98,9 @@ signed char FSOUND_Init(int mixrate)
 	FSOUND_MixRate			= mixrate;
 
 	{
+#ifdef CONSPIRACY_LINUX
+#else
+
 		WAVEFORMATEX	pcmwf;
 		UINT			hr;
 
@@ -116,7 +119,7 @@ signed char FSOUND_Init(int mixrate)
 
 		if (hr) 
 			return FALSE;
-
+#endif
 	}
 
 	// ========================================================================================================
@@ -177,9 +180,12 @@ void FSOUND_Close()
 	// ========================================================================================================
 	// SHUT DOWN OUTPUT DRIVER 
 	// ========================================================================================================
+#ifdef CONSPIRACY_LINUX
+#else
 	waveOutReset(FSOUND_WaveOutHandle);
 
 	waveOutClose(FSOUND_WaveOutHandle);
+#endif
 }
 
 
@@ -298,7 +304,10 @@ DWORD FSOUND_Software_DoubleBufferThread(LPDWORD lpdwParam)
 		MMTIME	mmt;
 
 		mmt.wType = TIME_BYTES;
+#ifdef CONSPIRACY_LINUX
+#else
 		waveOutGetPosition(FSOUND_WaveOutHandle, &mmt, sizeof(MMTIME));
+#endif
 		mmt.u.cb >>= 2;
 		cursorpos = mmt.u.cb;
 

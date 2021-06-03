@@ -128,6 +128,8 @@ signed char FMUSIC_PlaySong(FMUSIC_MODULE	* mod)
 	// ========================================================================================================
 
 	{
+#ifdef CONSPIRACY_LINUX
+#else
 		WAVEHDR	*wavehdr;
 		int	length = FSOUND_BufferSize << 2;
 
@@ -135,7 +137,7 @@ signed char FMUSIC_PlaySong(FMUSIC_MODULE	* mod)
 		wavehdr = &FSOUND_MixBlock.wavehdr;
 
 		FSOUND_MixBlock.data = FSOUND_Memory_Calloc(length);
-		
+
 		wavehdr->dwFlags			= WHDR_BEGINLOOP | WHDR_ENDLOOP;
 		wavehdr->lpData				= (LPSTR)FSOUND_MixBlock.data;
 		wavehdr->dwBufferLength		= length;
@@ -143,7 +145,7 @@ signed char FMUSIC_PlaySong(FMUSIC_MODULE	* mod)
 		wavehdr->dwUser				= 0;
 		wavehdr->dwLoops			= -1;
 		waveOutPrepareHeader(FSOUND_WaveOutHandle, wavehdr, sizeof(WAVEHDR));
-
+#endif
 	}
 
 	// ========================================================================================================
@@ -166,8 +168,10 @@ signed char FMUSIC_PlaySong(FMUSIC_MODULE	* mod)
 	// ========================================================================================================
 	// START THE OUTPUT
 	// ========================================================================================================
-
+#ifdef CONSPIRACY_LINUX
+#else
 	waveOutWrite(FSOUND_WaveOutHandle, &FSOUND_MixBlock.wavehdr, sizeof(WAVEHDR));
+#endif
 
 	{
 		DWORD	FSOUND_dwThreadId;
@@ -178,7 +182,6 @@ signed char FMUSIC_PlaySong(FMUSIC_MODULE	* mod)
 		FSOUND_Software_Exit = FALSE;
 
 #ifdef CONSPIRACY_LINUX
-
 #else
 		FSOUND_Software_hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)FSOUND_Software_DoubleBufferThread, 0,0, &FSOUND_dwThreadId);
 

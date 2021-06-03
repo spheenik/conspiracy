@@ -2,8 +2,8 @@
 #define CONSPIRACY_WINDOWS_H
 
 typedef int BOOL;
-const BOOL FALSE = 0;
-const BOOL TRUE = 1;
+#define FALSE 0
+#define TRUE 1
 
 typedef unsigned char BYTE;
 typedef unsigned int UINT;
@@ -19,7 +19,7 @@ typedef void *HDC;
 #define __stdcall __attribute__((stdcall))
 #define WINAPI __stdcall
 
-const int VK_ESCAPE = 27;
+#define VK_ESCAPE 27
 
 #ifdef __cplusplus
 extern "C"

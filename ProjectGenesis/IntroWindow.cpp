@@ -76,11 +76,10 @@ BOOL Intro_CreateWindow(char* title, int width, int height, int bits, bool fulls
 
     XMapWindow(dpy, win);
 
-    XStoreName(dpy, win, "ProjectGenesis");
+    XStoreName(dpy, win, title);
 
     glc = glXCreateContext(dpy, vi, NULL, GL_TRUE);
     glXMakeCurrent(dpy, win, glc);
-
 
 #else
 	GLuint		PixelFormat;

@@ -59,7 +59,7 @@ typedef struct mmtime_tag {
     } u;
 } MMTIME, *PMMTIME, *LPMMTIME;
 
-const int TIME_BYTES = 0x0004;
+#define TIME_BYTES 0x0004
 
 void waveOutPrepareHeader(HWAVEOUT pHwaveout, WAVEHDR *pTag, unsigned int i);
 void waveOutWrite(HWAVEOUT pHwaveout, WAVEHDR *pTag, unsigned int i);
