@@ -1,3 +1,7 @@
+#ifdef CONSPIRACY_LINUX
+#include <cairo/cairo.h>
+#include <stdio.h>
+#endif
 #include "TexGen.h"
 
 char *fonts[8];
@@ -707,15 +711,71 @@ void mixmap(texture &t, texturecommand incmnd)
 }
 
 void text(texture &t, texturecommand incmnd)
-
 {
-    /*
+    int zx,zy,i;
+    rgba ss;
+    char *s = new(char[256]);
+    memcpy(s,t.texts[incmnd.command[8]].text,256);
 
- int zx,zy,i;
- rgba ss;
- char *s = new(char[256]);
- memcpy(s,t.texts[incmnd.command[8]].text,256);
-	
+#ifdef CONSPIRACY_LINUX
+
+    cairo_surface_t *surface;
+    cairo_font_extents_t extents;
+    cairo_t *cr;
+
+    surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 256, 256);
+    cr = cairo_create(surface);
+
+    cairo_rectangle(cr, 0, 0, 256, 256);
+    cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
+    cairo_fill(cr);
+
+    cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
+
+
+    cairo_select_font_face(
+            cr,
+            fonts[incmnd.command[2]],
+            incmnd.command[6] ? CAIRO_FONT_SLANT_ITALIC : CAIRO_FONT_SLANT_NORMAL,
+            incmnd.command[7] ? CAIRO_FONT_WEIGHT_BOLD : CAIRO_FONT_WEIGHT_NORMAL
+    );
+
+    int size = incmnd.command[3] *0.83;
+
+    cairo_set_font_size(cr, size);
+    cairo_font_extents(cr, &extents);
+
+    cairo_move_to(cr, incmnd.command[4], incmnd.command[5] + extents.height - extents.descent);
+    cairo_show_text(cr, s);
+
+    rgba *buf = (rgba *) cairo_image_surface_get_data(surface);
+
+    cairo_destroy(cr);
+    cairo_surface_destroy(surface);
+
+    printf("text generation: pos:%u/%u, italic: %u, bold: %u, size: %u, font: %s, text: %s\n",
+           incmnd.command[4], incmnd.command[5],
+           incmnd.command[6],
+           incmnd.command[7],
+           incmnd.command[3],
+           fonts[incmnd.command[2]],
+           s
+    );
+
+    #define min( a, b ) ( ( a < b) ? a : b )
+
+    for (zx=0;zx<256;zx++)
+        for (zy=0;zy<256;zy++)
+        {
+            ss=buf[256*zx+zy];
+            t.layers[incmnd.layer][zy][zx].r=(byte)(min(ss.r+t.layers[incmnd.layer][zy][zx].r,255.0));
+            t.layers[incmnd.layer][zy][zx].g=(byte)(min(ss.g+t.layers[incmnd.layer][zy][zx].g,255.0));
+            t.layers[incmnd.layer][zy][zx].b=(byte)(min(ss.b+t.layers[incmnd.layer][zy][zx].b,255.0));
+        }
+    #undef min
+
+#else
+
  i=FW_NORMAL;
  if (incmnd.command[7]) i=FW_BOLD;
 
@@ -763,7 +823,8 @@ void text(texture &t, texturecommand incmnd)
       t.layers[incmnd.layer][zy][256-zx].b=(byte)(min(ss.b+t.layers[incmnd.layer][zy][256-zx].b,255.0));
      }
 
-     */
+#endif
+
 }
 
 void performcommand(texture &t, texturecommand incmnd)
