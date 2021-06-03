@@ -40,6 +40,7 @@ extern int xres,yres;
 
 GLvoid KillGLWindow(GLvoid);
 #ifdef CONSPIRACY_LINUX
+void handleXevents();
 void SwapBuffers(HDC hdc);
 #else
 LRESULT	CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);

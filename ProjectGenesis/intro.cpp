@@ -56,6 +56,7 @@ void swap()
 void __stdcall prepre(float f)
 {
 #ifdef CONSPIRACY_LINUX
+    handleXevents();
 #else
 	if (PeekMessage(&msg,NULL,0,0,PM_REMOVE))
 	{
@@ -73,6 +74,7 @@ void __stdcall prepre(float f)
 void __stdcall precalc(float f) 
 {
 #ifdef CONSPIRACY_LINUX
+    handleXevents();
 #else
 	if (PeekMessage(&msg,NULL,0,0,PM_REMOVE))
 	{
@@ -227,6 +229,7 @@ void mainloop()
 	while (!done)
 	{
 #ifdef CONSPIRACY_LINUX
+        handleXevents();
 #else
 		if (PeekMessage(&msg,NULL,0,0,PM_REMOVE))
 		{

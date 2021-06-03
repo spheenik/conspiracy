@@ -37,6 +37,7 @@ int xres,yres;
 GLvoid KillGLWindow(GLvoid)
 {
 #ifdef CONSPIRACY_LINUX
+    XCloseDisplay(dpy);
 #else
 	ChangeDisplaySettings(NULL,0);
 	ShowCursor(TRUE);
@@ -187,6 +188,14 @@ BOOL Intro_CreateWindow(char* title, int width, int height, int bits, bool fulls
 }
 
 #ifdef CONSPIRACY_LINUX
+void handleXevents() {
+    while (XCheckWindowEvent(dpy, win, KeyPressMask, &xev)) {
+        if (xev.xkey.keycode == 9) {
+            keys[27] = true;
+        }
+    }
+}
+
 void SwapBuffers(HDC hdc) {
     glXSwapBuffers(dpy, win);
 }
