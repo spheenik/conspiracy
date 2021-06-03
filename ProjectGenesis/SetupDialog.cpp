@@ -4,6 +4,7 @@
 
 SETUPCFG setupcfg;
 
+#ifndef CONSPIRACY_LINUX
 typedef struct {
 	int w,h;
 } RES;
@@ -66,7 +67,17 @@ BOOL CALLBACK DlgFunc( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam){
 	}
   return ( WM_INITDIALOG == uMsg ) ? TRUE : FALSE;
 }
+#endif
 
 int OpenSetupDialog(HINSTANCE hInstance) {
-	return DialogBox(hInstance,MAKEINTRESOURCE(IDD_SETUP),GetForegroundWindow(),DlgFunc);
+#ifdef CONSPIRACY_LINUX
+    setupcfg.resolution = 5;
+    setupcfg.fullscreen = 0;
+    setupcfg.music      = 1;
+    setupcfg.texturedetail = 2;
+    setupcfg.alwaysontop= 0;
+    return 1;
+#else
+    return DialogBox(hInstance,MAKEINTRESOURCE(IDD_SETUP),GetForegroundWindow(),DlgFunc);
+#endif
 }

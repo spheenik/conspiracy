@@ -1,6 +1,7 @@
 // Code done by Gargaj
 
 #include <stdio.h>
+#include <string.h>
 #include <windows.h>
 #include "fmod/minifmod.h"
 #include "samples.h"

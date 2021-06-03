@@ -53,16 +53,17 @@ void swap()
 	pscenelist=(scene*)buffer;
 }
 
-void TranslateMessage(MSG *pMsg);
-
 void __stdcall prepre(float f)
 {
+#ifdef CONSPIRACY_LINUX
+#else
 	if (PeekMessage(&msg,NULL,0,0,PM_REMOVE))
 	{
 		TranslateMessage(&msg);
 		DispatchMessage(&msg); 
 	}
 	else
+#endif
 	{
 		glClear(0x4100);		
 		SwapBuffers(hDC);
@@ -71,12 +72,15 @@ void __stdcall prepre(float f)
 
 void __stdcall precalc(float f) 
 {
+#ifdef CONSPIRACY_LINUX
+#else
 	if (PeekMessage(&msg,NULL,0,0,PM_REMOVE))
 	{
 		TranslateMessage(&msg);
 		DispatchMessage(&msg); 
 	}
 	else
+#endif
 	{
 		glClear(0x4100);
 		glLoadIdentity();
@@ -105,7 +109,11 @@ void Init()
 		case 5: x=1024; y=768; break;
 	}
 
+#ifdef CONSPIRACY_LINUX
+    Intro_CreateWindow("Conspiracy - Project Genesis", x, y, 32, setupcfg.fullscreen==1, NULL,setupcfg.alwaysontop==1);
+#else
 	Intro_CreateWindow("Conspiracy - Project Genesis", x, y, 32, setupcfg.fullscreen==1, LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON2)),setupcfg.alwaysontop==1);
+#endif
 	glClearColor(0,0,0,0);
 	glClear(0x4100);
 	initintroengine();
@@ -218,12 +226,16 @@ void mainloop()
 	int StartTime=timeGetTime();
 	while (!done)
 	{
+#ifdef CONSPIRACY_LINUX
+#else
 		if (PeekMessage(&msg,NULL,0,0,PM_REMOVE))
 		{
 			TranslateMessage(&msg);
 			DispatchMessage(&msg); 
 		}
-		else if (keys[VK_ESCAPE]) done=true;
+		else
+#endif
+		if (keys[VK_ESCAPE]) done=true;
 		else
 		{
 			if (setupcfg.music)
@@ -249,6 +261,17 @@ void mainloop()
 	}
 }
 
+#ifdef CONSPIRACY_LINUX
+int main(int argc, char *argv[]) {
+    if (OpenSetupDialog(NULL))
+    {
+        Init();
+        mainloop();
+        KillGLWindow();
+    }
+    return 0;
+}
+#else
 INT WINAPI WinMain( HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, INT nCmdShow )
 {
 	hInstance=hInst;
@@ -260,3 +283,4 @@ INT WINAPI WinMain( HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, I
 	}
 	return 0;
 }
+#endif

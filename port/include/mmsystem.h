@@ -1,9 +1,10 @@
 #ifndef CONSPIRACY_MMSYSTEM_H
 #define CONSPIRACY_MMSYSTEM_H
 
-#include <types.h>
+#include <windows.h>
 
-DECLARE_HANDLE(HWAVEOUT);
+typedef void *HWAVEOUT;
+
 #define WAVE_MAPPER     ((UINT)-1)
 
 typedef struct wavehdr_tag {
@@ -60,11 +61,11 @@ typedef struct mmtime_tag {
 
 const int TIME_BYTES = 0x0004;
 
-void waveOutPrepareHeader(HWAVEOUT pHwaveout, WAVEHDR *pTag, size_t i);
-void waveOutWrite(HWAVEOUT pHwaveout, WAVEHDR *pTag, size_t i);
+void waveOutPrepareHeader(HWAVEOUT pHwaveout, WAVEHDR *pTag, unsigned int i);
+void waveOutWrite(HWAVEOUT pHwaveout, WAVEHDR *pTag, unsigned int i);
 UINT waveOutOpen(HWAVEOUT *pHwaveout, UINT i, WAVEFORMATEX *pWaveformatex, int i1,int i2, int i3);
 void waveOutReset(HWAVEOUT pHwaveout);
 void waveOutClose(HWAVEOUT pHwaveout);
-void waveOutGetPosition(HWAVEOUT pHwaveout, MMTIME *pTag, size_t i);
+void waveOutGetPosition(HWAVEOUT pHwaveout, MMTIME *pTag, unsigned int i);
 
 #endif //CONSPIRACY_MMSYSTEM_H

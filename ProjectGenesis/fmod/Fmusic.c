@@ -26,10 +26,6 @@ FMUSIC_INSTRUMENT		FMUSIC_DummyInstrument;
 //= PRIVATE FUNCTIONS ==============================================================================
 
 
-void waveOutPrepareHeader(HWAVEOUT pHwaveout, WAVEHDR *pTag, size_t i);
-
-void waveOutWrite(HWAVEOUT pHwaveout, WAVEHDR *pTag, size_t i);
-
 /*
 [
 	[DESCRIPTION]
@@ -181,9 +177,13 @@ signed char FMUSIC_PlaySong(FMUSIC_MODULE	* mod)
 		// ========================================================================================================
 		FSOUND_Software_Exit = FALSE;
 
+#ifdef CONSPIRACY_LINUX
+
+#else
 		FSOUND_Software_hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)FSOUND_Software_DoubleBufferThread, 0,0, &FSOUND_dwThreadId);
 
 		SetThreadPriority(FSOUND_Software_hThread, THREAD_PRIORITY_TIME_CRITICAL);	// THREAD_PRIORITY_HIGHEST);
+#endif
 	}
 	return TRUE;
 }

@@ -12,6 +12,7 @@
 
 #include <string.h>
 #include <math.h>
+#include <stdio.h>
 
 #include "minifmod.h"
 #include "Mixer.h"

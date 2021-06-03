@@ -1,36 +1,34 @@
 #ifndef CONSPIRACY_WINDOWS_H
 #define CONSPIRACY_WINDOWS_H
 
-#define CONSPIRACY_LINUX
+typedef int BOOL;
+const BOOL FALSE = 0;
+const BOOL TRUE = 1;
 
-#include <string.h>
-#include <unistd.h>
-#include "types.h"
-#include "timeapi.h"
-#include "processthreadsapi.h"
+typedef unsigned char BYTE;
+typedef unsigned int UINT;
+typedef unsigned long DWORD, *LPDWORD, *DWORD_PTR;
+typedef unsigned short WORD;
+typedef char *LPSTR;
+
+typedef void *HANDLE;
+typedef void *HICON;
+typedef void *HINSTANCE;
+typedef void *HDC;
 
 #define __stdcall __attribute__((stdcall))
-
 #define WINAPI __stdcall
-#define CALLBACK __stdcall
 
-DECLARE_HANDLE(HINSTANCE);
-DECLARE_HANDLE(HDC);
-DECLARE_HANDLE(HGLRC);
-DECLARE_HANDLE(HWND);
-DECLARE_HANDLE(HICON);
+const int VK_ESCAPE = 27;
 
-#define Sleep(x) usleep((x)*1000)
-
-HINSTANCE GetModuleHandle (LPCTSTR lpModuleName);
-
-HICON LoadIcon(HINSTANCE hInstance,LPCTSTR lpIconName);
-
-#define MAKEINTRESOURCE(i) ((LPCTSTR)i)
-
-#define VK_ESCAPE (27)
-
-#define TRUE (1)
-#define FALSE (0)
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+DWORD timeGetTime();
+void Sleep(DWORD milliseconds);
+#ifdef __cplusplus
+}
+#endif
 
 #endif //CONSPIRACY_WINDOWS_H
