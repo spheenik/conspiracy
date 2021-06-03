@@ -23,6 +23,10 @@ FSOUND_SAMPLE		FMUSIC_DummySample;
 FSOUND_CHANNEL			FMUSIC_DummyChannel;
 FMUSIC_INSTRUMENT		FMUSIC_DummyInstrument;
 
+int	 (*FSOUND_File_Read)(void *buffer, int size);
+void (*FSOUND_File_Seek)(int pos, signed char mode);
+int	 (*FSOUND_File_Tell)();
+
 //= PRIVATE FUNCTIONS ==============================================================================
 
 

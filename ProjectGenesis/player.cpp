@@ -62,7 +62,7 @@ void memseek(int pos, signed char mode)
 
 int memtell() { return music_pos; }
 
-FMUSIC_MODULE	* mod;
+extern "C" FMUSIC_MODULE	* mod;
 int cnsSynth_LoadMusic() {
 #ifdef __DELTA
 	delta_decode(music_data,MUSICSIZE);

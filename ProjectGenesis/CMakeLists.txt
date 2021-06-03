@@ -31,5 +31,5 @@ set_source_files_properties(fmod/mixer_fpu_ramp.asm PROPERTIES LANGUAGE ASM_NASM
 add_executable(project-genesis ${SOURCE_FILES})
 target_include_directories(project-genesis PUBLIC ../port/include)
 target_compile_definitions(project-genesis PUBLIC CONSPIRACY_LINUX)
-set_target_properties(project-genesis PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32 -no-pie -z muldefs")
+set_target_properties(project-genesis PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32 -no-pie")
 target_link_libraries(project-genesis X11 GL GLU cairo)

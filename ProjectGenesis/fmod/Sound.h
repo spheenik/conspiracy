@@ -159,38 +159,37 @@ typedef struct
 
 //= VARIABLE EXTERNS ==========================================================================
 #ifdef __cplusplus
-extern "C" 
-{
+#define _EXTERN extern "C"
+#else
+#define _EXTERN extern
 #endif
 
-FSOUND_CHANNEL			FSOUND_Channel[];
-int						FSOUND_MixRate;
-int						FSOUND_BufferSize;			// software buffersize
-int						FSOUND_BufferSizeMs;
-HWAVEOUT				FSOUND_WaveOutHandle;
-FSOUND_SoundBlock		FSOUND_MixBlock;
+_EXTERN FSOUND_CHANNEL			FSOUND_Channel[];
+_EXTERN int						FSOUND_MixRate;
+_EXTERN int						FSOUND_BufferSize;			// software buffersize
+_EXTERN int						FSOUND_BufferSizeMs;
+_EXTERN HWAVEOUT				FSOUND_WaveOutHandle;
+_EXTERN FSOUND_SoundBlock		FSOUND_MixBlock;
 
 // mixing info
-signed char *			FSOUND_MixBufferMem;		// mix buffer memory block
-signed char	*			FSOUND_MixBuffer;			// mix output buffer (16bit or 32bit)
-unsigned int			FSOUND_MixerAddress;		// actual address of the function
-int						FSOUND_HWMixOffset;			// the offset in the output buffer to mix into in bytes
-float					FSOUND_OOMixRate;			// mixing rate in hz.
-int						FSOUND_BufferSize;			// size of 1 'latency' ms buffer in bytes
-int						FSOUND_BlockSize;			// LATENCY ms worth of samples
+_EXTERN signed char *			FSOUND_MixBufferMem;		// mix buffer memory block
+_EXTERN signed char	*			FSOUND_MixBuffer;			// mix output buffer (16bit or 32bit)
+_EXTERN unsigned int			FSOUND_MixerAddress;		// actual address of the function
+_EXTERN int						FSOUND_HWMixOffset;			// the offset in the output buffer to mix into in bytes
+_EXTERN float					FSOUND_OOMixRate;			// mixing rate in hz.
+_EXTERN int						FSOUND_BufferSize;			// size of 1 'latency' ms buffer in bytes
+_EXTERN int						FSOUND_BlockSize;			// LATENCY ms worth of samples
 
-volatile signed char	FSOUND_Software_Exit;		// mixing thread termination flag
-volatile signed char	FSOUND_Software_UpdateMutex;
-volatile signed char	FSOUND_Software_ThreadFinished;
-volatile HANDLE			FSOUND_Software_hThread;
-volatile int			FSOUND_Software_FillBlock;
-volatile int			FSOUND_Software_RealBlock;
+_EXTERN volatile signed char	FSOUND_Software_Exit;		// mixing thread termination flag
+_EXTERN volatile signed char	FSOUND_Software_UpdateMutex;
+_EXTERN volatile signed char	FSOUND_Software_ThreadFinished;
+_EXTERN volatile HANDLE			FSOUND_Software_hThread;
+_EXTERN volatile int			FSOUND_Software_FillBlock;
+_EXTERN volatile int			FSOUND_Software_RealBlock;
 
-DWORD					FSOUND_Software_DoubleBufferThread(LPDWORD lpdwParam);
-void					FSOUND_Software_Fill();
+_EXTERN DWORD					FSOUND_Software_DoubleBufferThread(LPDWORD lpdwParam);
+_EXTERN void					FSOUND_Software_Fill();
 
-#ifdef __cplusplus
-}
-#endif
+#undef _EXTERN
 
 #endif
