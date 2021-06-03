@@ -4,7 +4,6 @@
 #include <stdlib.h>
 Display                 *dpy;
 Window                  root;
-GLint                   att[] = { GLX_RGBA, GLX_DEPTH_SIZE, 24, GLX_DOUBLEBUFFER, None };
 XVisualInfo             *vi;
 Colormap                cmap;
 XSetWindowAttributes    swa;
@@ -58,6 +57,15 @@ BOOL Intro_CreateWindow(const char* title, int width, int height, int bits, bool
 
     root = DefaultRootWindow(dpy);
 
+    GLint att[] = {
+            GLX_RGBA,
+            GLX_DOUBLEBUFFER,
+            GLX_DEPTH_SIZE, 24,
+            GLX_RED_SIZE, 8,
+            GLX_GREEN_SIZE, 8,
+            GLX_BLUE_SIZE, 8,
+            GLX_ALPHA_SIZE, 8,
+            None };
     vi = glXChooseVisual(dpy, 0, att);
 
     if(vi == NULL) {
