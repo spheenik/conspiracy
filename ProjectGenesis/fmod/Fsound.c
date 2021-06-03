@@ -19,14 +19,18 @@
 #include "system_memory.h"
 
 #include <windows.h>
+
+#ifdef CONSPIRACY_LINUX
+#include <stdio.h>
+#else
 #include <mmsystem.h>
+#endif
 
 //= GLOBALS ================================================================================
 
 FSOUND_CHANNEL		FSOUND_Channel[256];		// channel pool 
 int					FSOUND_MixRate;				// mixing rate in hz.
 int					FSOUND_BufferSizeMs = 1000;
-HWAVEOUT			FSOUND_WaveOutHandle;
 FSOUND_SoundBlock	FSOUND_MixBlock;
 
 // mixing info
@@ -40,20 +44,26 @@ int					FSOUND_BlockSize;			// LATENCY ms worth of samples
 volatile signed char	FSOUND_Software_Exit			= FALSE;		// mixing thread termination flag
 volatile signed char	FSOUND_Software_UpdateMutex		= FALSE;
 volatile signed char	FSOUND_Software_ThreadFinished	= TRUE;
-volatile HANDLE			FSOUND_Software_hThread			= NULL;
 volatile int			FSOUND_Software_FillBlock		= 0;
 volatile int			FSOUND_Software_RealBlock		= 0;
 
+#ifdef CONSPIRACY_LINUX
+FSOUND_PAConnection     FSOUND_PA;
+pthread_t   			FSOUND_Thread;
 
-UINT
-waveOutOpen(HWAVEOUT *pHwaveout, UINT i, WAVEFORMATEX *pWaveformatex, int i1,
-            int i2, int i3);
+void context_state_cb(pa_context* context, void* mainloop) {
+    printf("state_cb\n");
+    pa_threaded_mainloop_signal(mainloop, 0);
+}
 
-void waveOutReset(HWAVEOUT pHwaveout);
+void stream_state_cb(pa_stream *s, void *mainloop) {
+    pa_threaded_mainloop_signal(mainloop, 0);
+}
 
-void waveOutClose(HWAVEOUT pHwaveout);
-
-void waveOutGetPosition(HWAVEOUT pHwaveout, MMTIME *pTag, size_t i);
+#else
+HWAVEOUT			 FSOUND_WaveOutHandle;
+volatile HANDLE			FSOUND_Software_hThread			= NULL;
+#endif
 
 /*
 [API]
@@ -99,6 +109,83 @@ signed char FSOUND_Init(int mixrate)
 
 	{
 #ifdef CONSPIRACY_LINUX
+
+        FSOUND_PA.mainloop = pa_threaded_mainloop_new();
+	    assert(FSOUND_PA.mainloop);
+
+        FSOUND_PA.api = pa_threaded_mainloop_get_api(FSOUND_PA.mainloop);
+        assert(FSOUND_PA.api);
+
+		FSOUND_PA.context = pa_context_new(FSOUND_PA.api, "project-genesis");
+        assert(FSOUND_PA.context);
+
+        pa_context_set_state_callback(FSOUND_PA.context, context_state_cb, FSOUND_PA.mainloop);
+
+        assert(pa_context_connect(FSOUND_PA.context, NULL, 0, NULL) == 0);
+
+        // Lock the mainloop so that it does not run and crash before the context is ready
+        pa_threaded_mainloop_lock(FSOUND_PA.mainloop);
+
+        assert(pa_threaded_mainloop_start(FSOUND_PA.mainloop) == 0);
+
+        for(;;) {
+            pa_context_state_t context_state = pa_context_get_state(FSOUND_PA.context);
+            assert(PA_CONTEXT_IS_GOOD(context_state));
+            switch (context_state) {
+                case PA_CONTEXT_UNCONNECTED:
+                    printf("state now PA_CONTEXT_UNCONNECTED\n"); break;
+                case PA_CONTEXT_CONNECTING:
+                    printf("state now PA_CONTEXT_CONNECTING\n"); break;
+                case PA_CONTEXT_AUTHORIZING:
+                    printf("state now PA_CONTEXT_AUTHORIZING\n"); break;
+                case PA_CONTEXT_SETTING_NAME:
+                    printf("state now PA_CONTEXT_SETTING_NAME\n"); break;
+                case PA_CONTEXT_READY:
+                    printf("state now PA_CONTEXT_READY\n"); break;
+                case PA_CONTEXT_FAILED:
+                    printf("state now PA_CONTEXT_FAILED\n"); break;
+                case PA_CONTEXT_TERMINATED:
+                    printf("state now PA_CONTEXT_TERMINATED\n"); break;
+            }
+            if (context_state == PA_CONTEXT_READY) break;
+            pa_threaded_mainloop_wait(FSOUND_PA.mainloop);
+        }
+
+		pa_channel_map map;
+		pa_channel_map_init_stereo(&map);
+
+		FSOUND_PA.sample_spec.rate = mixrate;
+        FSOUND_PA.sample_spec.channels = 2;
+        FSOUND_PA.sample_spec.format = PA_SAMPLE_S16LE;
+
+		FSOUND_PA.stream = pa_stream_new(FSOUND_PA.context, "Playback", &FSOUND_PA.sample_spec, &map);
+        pa_stream_set_state_callback(FSOUND_PA.stream, stream_state_cb, FSOUND_PA.mainloop);
+
+		// recommended settings, i.e. server uses sensible values
+		pa_buffer_attr buffer_attr;
+		buffer_attr.maxlength = (uint32_t) -1;
+		buffer_attr.tlength = (uint32_t) -1;
+		buffer_attr.prebuf = (uint32_t) -1;
+		buffer_attr.minreq = (uint32_t) -1;
+
+		// Settings copied as per the chromium browser source
+		pa_stream_flags_t stream_flags;
+		stream_flags = PA_STREAM_START_CORKED | PA_STREAM_INTERPOLATE_TIMING |
+					   PA_STREAM_AUTO_TIMING_UPDATE | PA_STREAM_ADJUST_LATENCY;
+
+		// Connect stream to the default audio output sink
+		assert(pa_stream_connect_playback(FSOUND_PA.stream, NULL, &buffer_attr, stream_flags, NULL, NULL) == 0);
+
+		// Wait for the stream to be ready
+		for(;;) {
+			pa_stream_state_t stream_state = pa_stream_get_state(FSOUND_PA.stream);
+			assert(PA_STREAM_IS_GOOD(stream_state));
+			if (stream_state == PA_STREAM_READY) break;
+			pa_threaded_mainloop_wait(FSOUND_PA.mainloop);
+		}
+
+		pa_threaded_mainloop_unlock(FSOUND_PA.mainloop);
+
 #else
 
 		WAVEFORMATEX	pcmwf;
@@ -181,6 +268,12 @@ void FSOUND_Close()
 	// SHUT DOWN OUTPUT DRIVER 
 	// ========================================================================================================
 #ifdef CONSPIRACY_LINUX
+
+	pa_threaded_mainloop_stop(FSOUND_PA.mainloop);
+	pa_context_disconnect(FSOUND_PA.context);
+	pa_context_unref(FSOUND_PA.context);
+	pa_threaded_mainloop_free(FSOUND_PA.mainloop);
+
 #else
 	waveOutReset(FSOUND_WaveOutHandle);
 
@@ -241,7 +334,7 @@ void FSOUND_Software_Fill()
 			if (MixedSoFar + SamplesToMix > FSOUND_BlockSize) 
 				SamplesToMix = FSOUND_BlockSize - MixedSoFar;
 
-			FSOUND_Mixer_FPU_Ramp(MixPtr, SamplesToMix, FALSE); 
+			FSOUND_Mixer_FPU_Ramp(FSOUND_Channel, MixPtr, SamplesToMix);
 
 			MixedSoFar	+= SamplesToMix;
 			MixPtr		+= (SamplesToMix << 3);
@@ -290,7 +383,11 @@ void FSOUND_Software_Fill()
 
 	[SEE_ALSO]
 */
+#ifdef CONSPIRACY_LINUX
+void *FSOUND_Software_DoubleBufferThread(void *param)
+#else
 DWORD FSOUND_Software_DoubleBufferThread(LPDWORD lpdwParam)
+#endif
 {
 	int totalblocks; 
 
@@ -301,15 +398,19 @@ DWORD FSOUND_Software_DoubleBufferThread(LPDWORD lpdwParam)
 	while (!FSOUND_Software_Exit)
 	{
 		int		cursorpos,cursorblock,prevblock;
-		MMTIME	mmt;
+#ifdef CONSPIRACY_LINUX
+		pa_usec_t usec;
+        pa_stream_get_time(FSOUND_PA.stream, &usec);
+        //printf("usec: %llu\n", usec);
+        cursorpos = pa_usec_to_bytes(usec, &FSOUND_PA.sample_spec) >> 2;
+#else
+        MMTIME	mmt;
 
 		mmt.wType = TIME_BYTES;
-#ifdef CONSPIRACY_LINUX
-#else
 		waveOutGetPosition(FSOUND_WaveOutHandle, &mmt, sizeof(MMTIME));
-#endif
 		mmt.u.cb >>= 2;
 		cursorpos = mmt.u.cb;
+#endif
 
 		cursorpos %= FSOUND_BufferSize;
 		cursorblock = cursorpos / FSOUND_BlockSize;
@@ -322,7 +423,9 @@ DWORD FSOUND_Software_DoubleBufferThread(LPDWORD lpdwParam)
 		{
 			FSOUND_Software_UpdateMutex = TRUE;
 
+            int blocknum = FSOUND_Software_FillBlock;
 			FSOUND_Software_Fill();
+            pa_stream_write(FSOUND_PA.stream, FSOUND_MixBlock.data + FSOUND_BlockSize * (blocknum << 2), FSOUND_BlockSize << 2, NULL, 0, PA_SEEK_RELATIVE);
 	
 			FSOUND_Software_RealBlock++;
 			if (FSOUND_Software_RealBlock >= totalblocks)

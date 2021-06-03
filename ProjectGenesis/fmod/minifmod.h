@@ -18,6 +18,12 @@
 #ifndef _MINIFMOD_H_
 #define _MINIFMOD_H_
 
+#ifdef CONSPIRACY_LINUX
+#include <pulse/pulseaudio.h>
+#include <pulse/error.h>
+#endif
+
+
 //===============================================================================================
 //= DEFINITIONS
 //===============================================================================================

@@ -47,8 +47,8 @@ void FSOUND_MixerClipCopy_Float32(void *dest, void *src, long len)
 #ifdef CONSPIRACY_LINUX
         __asm(
         "flds (%0)\n"
-        "add 4, %0\n"
-        "fistps %1\n"
+        "add $4, %0\n"
+        "fistpl %1\n"
         : "+r" (srcptr), "=m" (val)
         );
 #elif

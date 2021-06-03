@@ -14,8 +14,11 @@
 #define _SOUND_H_
 
 #include <windows.h>
+#ifdef CONSPIRACY_LINUX
+#include <pulse/pulseaudio.h>
+#else
 #include <mmsystem.h>
-
+#endif
 #include "system_memory.h"
 
 //= DEFINITIONS ===============================================================================
@@ -150,12 +153,29 @@ typedef struct
 
 //= FUNCTIONS =================================================================================
 
-typedef struct 
+#ifdef CONSPIRACY_LINUX
+typedef struct
+{
+    pa_threaded_mainloop *  mainloop;
+    pa_mainloop_api *       api;
+    pa_context *            context;
+    pa_stream *             stream;
+    pa_sample_spec          sample_spec;
+    int error;
+} FSOUND_PAConnection;
+
+typedef struct
+{
+    unsigned int length;
+    signed char	*data;
+} FSOUND_SoundBlock;
+#else
+typedef struct
 {
 	WAVEHDR		wavehdr;
 	signed char	*data;
 } FSOUND_SoundBlock;
-
+#endif
 
 //= VARIABLE EXTERNS ==========================================================================
 #ifdef __cplusplus
@@ -168,7 +188,14 @@ _EXTERN FSOUND_CHANNEL			FSOUND_Channel[];
 _EXTERN int						FSOUND_MixRate;
 _EXTERN int						FSOUND_BufferSize;			// software buffersize
 _EXTERN int						FSOUND_BufferSizeMs;
+
+#ifdef CONSPIRACY_LINUX
+_EXTERN FSOUND_PAConnection     FSOUND_PA;
+_EXTERN pthread_t   			FSOUND_Thread;
+#else
 _EXTERN HWAVEOUT				FSOUND_WaveOutHandle;
+_EXTERN volatile HANDLE			FSOUND_Software_hThread;
+#endif
 _EXTERN FSOUND_SoundBlock		FSOUND_MixBlock;
 
 // mixing info
@@ -183,11 +210,15 @@ _EXTERN int						FSOUND_BlockSize;			// LATENCY ms worth of samples
 _EXTERN volatile signed char	FSOUND_Software_Exit;		// mixing thread termination flag
 _EXTERN volatile signed char	FSOUND_Software_UpdateMutex;
 _EXTERN volatile signed char	FSOUND_Software_ThreadFinished;
-_EXTERN volatile HANDLE			FSOUND_Software_hThread;
 _EXTERN volatile int			FSOUND_Software_FillBlock;
 _EXTERN volatile int			FSOUND_Software_RealBlock;
 
+#ifdef CONSPIRACY_LINUX
+_EXTERN void*					FSOUND_Software_DoubleBufferThread(void*);
+#else
 _EXTERN DWORD					FSOUND_Software_DoubleBufferThread(LPDWORD lpdwParam);
+#endif
+
 _EXTERN void					FSOUND_Software_Fill();
 
 #undef _EXTERN

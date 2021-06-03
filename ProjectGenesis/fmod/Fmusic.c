@@ -10,6 +10,11 @@
 /* This source must not be redistributed without this notice.                 */
 /******************************************************************************/
 
+#ifdef CONSPIRACY_LINUX
+#include <stdio.h>
+#include <pthread.h>
+#endif
+
 #include "minifmod.h"
 
 #include "music_formatxm.h"
@@ -133,6 +138,9 @@ signed char FMUSIC_PlaySong(FMUSIC_MODULE	* mod)
 
 	{
 #ifdef CONSPIRACY_LINUX
+        int	length = FSOUND_BufferSize << 2;
+        FSOUND_MixBlock.length = length;
+        FSOUND_MixBlock.data = FSOUND_Memory_Calloc(length);
 #else
 		WAVEHDR	*wavehdr;
 		int	length = FSOUND_BufferSize << 2;
@@ -173,6 +181,10 @@ signed char FMUSIC_PlaySong(FMUSIC_MODULE	* mod)
 	// START THE OUTPUT
 	// ========================================================================================================
 #ifdef CONSPIRACY_LINUX
+
+    pa_stream_write(FSOUND_PA.stream, FSOUND_MixBlock.data, FSOUND_MixBlock.length, NULL, 0L, PA_SEEK_RELATIVE);
+    pa_stream_cork(FSOUND_PA.stream, 0, NULL, FSOUND_PA.mainloop);
+
 #else
 	waveOutWrite(FSOUND_WaveOutHandle, &FSOUND_MixBlock.wavehdr, sizeof(WAVEHDR));
 #endif
@@ -186,6 +198,12 @@ signed char FMUSIC_PlaySong(FMUSIC_MODULE	* mod)
 		FSOUND_Software_Exit = FALSE;
 
 #ifdef CONSPIRACY_LINUX
+        pthread_create(&FSOUND_Thread, NULL, FSOUND_Software_DoubleBufferThread, NULL);
+
+        struct sched_param params;
+        params.sched_priority = sched_get_priority_max(SCHED_FIFO);
+        pthread_setschedparam(FSOUND_Thread, SCHED_FIFO, &params);
+
 #else
 		FSOUND_Software_hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)FSOUND_Software_DoubleBufferThread, 0,0, &FSOUND_dwThreadId);
 
