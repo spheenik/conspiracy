@@ -72,9 +72,6 @@ BOOL Intro_CreateWindow(const char* title, int width, int height, int bits, bool
         printf("\n\tno appropriate visual found\n\n");
         exit(0);
     }
-    else {
-        printf("\n\tvisual %p selected\n", (void *)vi->visualid); /* %p creates hexadecimal output like in glxinfo */
-    }
 
     cmap = XCreateColormap(dpy, root, vi->visual, AllocNone);
 

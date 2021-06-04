@@ -131,22 +131,6 @@ signed char FSOUND_Init(int mixrate)
         for(;;) {
             pa_context_state_t context_state = pa_context_get_state(FSOUND_PA.context);
             assert(PA_CONTEXT_IS_GOOD(context_state));
-            switch (context_state) {
-                case PA_CONTEXT_UNCONNECTED:
-                    printf("state now PA_CONTEXT_UNCONNECTED\n"); break;
-                case PA_CONTEXT_CONNECTING:
-                    printf("state now PA_CONTEXT_CONNECTING\n"); break;
-                case PA_CONTEXT_AUTHORIZING:
-                    printf("state now PA_CONTEXT_AUTHORIZING\n"); break;
-                case PA_CONTEXT_SETTING_NAME:
-                    printf("state now PA_CONTEXT_SETTING_NAME\n"); break;
-                case PA_CONTEXT_READY:
-                    printf("state now PA_CONTEXT_READY\n"); break;
-                case PA_CONTEXT_FAILED:
-                    printf("state now PA_CONTEXT_FAILED\n"); break;
-                case PA_CONTEXT_TERMINATED:
-                    printf("state now PA_CONTEXT_TERMINATED\n"); break;
-            }
             if (context_state == PA_CONTEXT_READY) break;
             pa_threaded_mainloop_wait(FSOUND_PA.mainloop);
         }

@@ -753,6 +753,7 @@ void text(texture &t, texturecommand incmnd)
     cairo_destroy(cr);
     cairo_surface_destroy(surface);
 
+#if 0
     printf("text generation: pos:%u/%u, italic: %u, bold: %u, size: %u, font: %s, text: %s\n",
            incmnd.command[4], incmnd.command[5],
            incmnd.command[6],
@@ -761,6 +762,7 @@ void text(texture &t, texturecommand incmnd)
            fonts[incmnd.command[2]],
            s
     );
+#endif
 
     #define min( a, b ) ( ( a < b) ? a : b )
 
