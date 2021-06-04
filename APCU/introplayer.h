@@ -5,7 +5,7 @@
 #include <GL/gl.h>
 #include <GL/glu.h>
 #include "introengine.h"
-#include "introwindow.h"
+#include "IntroWindow.h"
 
 // EFFECTS
 

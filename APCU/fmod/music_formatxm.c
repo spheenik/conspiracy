@@ -12,12 +12,13 @@
 
 #include <string.h>
 #include <math.h>
+#include <stdio.h>
 
 #include "minifmod.h"
-#include "mixer.h"
-#include "music.h"
+#include "Mixer.h"
+#include "Music.h"
 #include "music_formatxm.h"
-#include "sound.h"
+#include "Sound.h"
 
 #include "xmeffects.h"
 
@@ -597,28 +598,41 @@ void FMUSIC_XM_UpdateFlags(FMUSIC_CHANNEL *cptr, FSOUND_SAMPLE *sptr, FMUSIC_MOD
 		if (freq < 100) 
 			freq = 100;
 
-		__asm
-		{
-			push	eax
-			push	ebx
-			push	ecx
-			push	edx
+#ifdef CONSPIRACY_LINUX
+        __asm(
+        "xor %%edx, %%edx\n"
+        "div %%ebx\n"
+        "mov %%eax, %0\n"
+        "div %%ebx\n"
+        "mov %%eax, %1\n"
+        : "=m" (ccptr->speedhi), "=m" (ccptr->speedlo)
+        : "b" (FSOUND_MixRate), "a" (freq)
+        : "%edx"
+        );
+#elif
+        __asm
+        {
+        push	eax
+        push	ebx
+        push	ecx
+        push	edx
 
-			// work out low fractional part of the speed using a 64bit divide
-			mov		ecx, ccptr
-			mov		ebx, FSOUND_MixRate
-			mov		eax, freq
-			xor		edx, edx
-			div		ebx							// get quotient and remainder
-			mov		[ecx].speedhi, eax
-			div		ebx							// now divide remainder by rate to get lower 32bit fraction
-			mov		[ecx].speedlo, eax
+        // work out low fractional part of the speed using a 64bit divide
+        mov		ecx, ccptr
+        mov		ebx, FSOUND_MixRate
+        mov		eax, freq
+        xor		edx, edx
+        div		ebx							// get quotient and remainder
+        mov		[ecx].speedhi, eax
+        div		ebx							// now divide remainder by rate to get lower 32bit fraction
+        mov		[ecx].speedlo, eax
 
-			pop		edx
-			pop		ecx
-			pop		ebx
-			pop		eax
-		}
+        pop		edx
+        pop		ecx
+        pop		ebx
+        pop		eax
+        }
+#endif
 	}
 	if (cptr->notectrl & FMUSIC_STOP)		
 	{

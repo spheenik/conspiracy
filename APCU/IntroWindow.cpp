@@ -1,9 +1,25 @@
 #include "IntroWindow.h"
 
+#ifdef CONSPIRACY_LINUX
+#include <stdlib.h>
+Display                 *dpy;
+Window                  root;
+XVisualInfo             *vi;
+Colormap                cmap;
+XSetWindowAttributes    swa;
+Window                  win;
+GLXContext              glc;
+XWindowAttributes       gwa;
+XEvent                  xev;
+
+HDC			hDC=NULL;
+
+#else
 HDC			hDC=NULL;
 HGLRC		hRC=NULL;
 HWND		hWnd=NULL;
 HINSTANCE	hInstance;
+#endif
 
 bool	keys[256];
 bool	active=TRUE;
@@ -11,20 +27,67 @@ bool	active=TRUE;
 bool    done = false;
 bool	mode3d = true;
 
+#ifdef CONSPIRACY_LINUX
+#else
 MSG msg;
-
+#endif
 int xres,yres;
 
 GLvoid KillGLWindow(GLvoid)
 {
+#ifdef CONSPIRACY_LINUX
+    XCloseDisplay(dpy);
+#else
 	ChangeDisplaySettings(NULL,0);
 	ShowCursor(TRUE);
+#endif
 }
 
 BOOL Intro_CreateWindow(const char* title, int width, int height, int bits, bool fullscreenflag, HICON icon, bool aontop)
 {
 	xres=width;
 	yres=height;
+#ifdef CONSPIRACY_LINUX
+    dpy = XOpenDisplay(NULL);
+
+    if(dpy == NULL) {
+        printf("\n\tcannot connect to X server\n\n");
+        exit(0);
+    }
+
+    root = DefaultRootWindow(dpy);
+
+    GLint att[] = {
+            GLX_RGBA,
+            GLX_DOUBLEBUFFER,
+            GLX_DEPTH_SIZE, 24,
+            GLX_RED_SIZE, 8,
+            GLX_GREEN_SIZE, 8,
+            GLX_BLUE_SIZE, 8,
+            GLX_ALPHA_SIZE, 8,
+            None };
+    vi = glXChooseVisual(dpy, 0, att);
+
+    if(vi == NULL) {
+        printf("\n\tno appropriate visual found\n\n");
+        exit(0);
+    }
+
+    cmap = XCreateColormap(dpy, root, vi->visual, AllocNone);
+
+    swa.colormap = cmap;
+    swa.event_mask = KeyPressMask;
+
+    win = XCreateWindow(dpy, root, 0, 0, xres, yres, 0, vi->depth, InputOutput, vi->visual, CWColormap | CWEventMask, &swa);
+
+    XMapWindow(dpy, win);
+
+    XStoreName(dpy, win, title);
+
+    glc = glXCreateContext(dpy, vi, NULL, GL_TRUE);
+    glXMakeCurrent(dpy, win, glc);
+
+#else
 	GLuint		PixelFormat;
 	WNDCLASS	wc;
 	DWORD		dwExStyle;
@@ -123,6 +186,7 @@ BOOL Intro_CreateWindow(const char* title, int width, int height, int bits, bool
 			0, 0, SWP_NOSIZE);
 		//WriteDebug("Always on top.\n");
 	}
+#endif
 
 	glEnable(GL_DEPTH_TEST);
 	//glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
@@ -130,6 +194,19 @@ BOOL Intro_CreateWindow(const char* title, int width, int height, int bits, bool
 	return TRUE;									
 }
 
+#ifdef CONSPIRACY_LINUX
+void handleXevents() {
+    while (XCheckWindowEvent(dpy, win, KeyPressMask, &xev)) {
+        if (xev.xkey.keycode == 9) {
+            keys[27] = true;
+        }
+    }
+}
+
+void SwapBuffers(HDC hdc) {
+    glXSwapBuffers(dpy, win);
+}
+#else
 LRESULT CALLBACK WndProc(	HWND	hWnd,
 							UINT	uMsg,
 							WPARAM	wParam,
@@ -169,6 +246,7 @@ LRESULT CALLBACK WndProc(	HWND	hWnd,
 
 	return DefWindowProc(hWnd,uMsg,wParam,lParam);
 }
+#endif
 
 void switchto2d()
 {

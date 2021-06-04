@@ -11,8 +11,8 @@
 /******************************************************************************/
 
 #include "minifmod.h"
-#include "sound.h"
-#include "mixer.h"
+#include "Sound.h"
+#include "Mixer.h"
 #include "mixer_clipcopy.h"
 #include "mixer_fpu_ramp.h"
 #include "system_memory.h"

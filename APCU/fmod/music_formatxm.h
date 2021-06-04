@@ -13,7 +13,7 @@
 #ifndef _FMUSIC_FORMATXM
 #define _FMUSIC_FORMATXM
 
-#include "music.h"
+#include "Music.h"
 //#include "system_file.h"
 
 

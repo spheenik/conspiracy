@@ -1,7 +1,7 @@
 #include "intro.h"
 #include "genesis.h"
 #include "precalc.h"
-#include "setupdialog.h"
+#include "SetupDialog.h"
 #include "resource.h"
 //#include "pipes.h"
 //539843 long
@@ -55,14 +55,18 @@ void swap()
 	pscenelist=(scene*)buffer;
 }
 
-void __stdcall prepre(float f) 
+void __stdcall prepre(float f)
 {
+#ifdef CONSPIRACY_LINUX
+    handleXevents();
+#else
 	if (PeekMessage(&msg,NULL,0,0,PM_REMOVE))
 	{
 		TranslateMessage(&msg);
 		DispatchMessage(&msg); 
 	}
 	else
+#endif
 	{
 		//switchto2d();
 		glClear(0x4100);		
@@ -78,12 +82,16 @@ void __stdcall prepre(float f)
 
 void __stdcall precalc(float f) 
 {
+#ifdef CONSPIRACY_LINUX
+    handleXevents();
+#else
 	if (PeekMessage(&msg,NULL,0,0,PM_REMOVE))
 	{
 		TranslateMessage(&msg);
 		DispatchMessage(&msg); 
 	}
 	else
+#endif
 	{
 		glClear(0x4100);
 		glLoadIdentity();
@@ -112,7 +120,11 @@ void Init()
 	//case 8: x=1600; y=1200; break;
 	}
 
-	Intro_CreateWindow("Conspiracy - A Place Called Universe", x, y, 32, setupcfg.fullscreen==1, LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON2)),setupcfg.alwaysontop==1);
+#ifdef CONSPIRACY_LINUX
+    Intro_CreateWindow("Conspiracy - Project Genesis", x, y, 32, setupcfg.fullscreen==1, NULL,setupcfg.alwaysontop==1);
+#else
+	Intro_CreateWindow("Conspiracy - Project Genesis", x, y, 32, setupcfg.fullscreen==1, LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON2)),setupcfg.alwaysontop==1);
+#endif
 	glClearColor(0,0,0,0);
 	glClear(0x4100);
 	initintroengine();
@@ -145,91 +157,104 @@ void rotatehack(object *o,matrix r, bool objspace)
 	//obj_transform(o,o->xformmatrix);
 }
 
-void mainloop()
-{
-	time=lasttime=0;
-	int StartTime=timeGetTime();
-	while (!done)
-	{
-		if (PeekMessage(&msg,NULL,0,0,PM_REMOVE))
-		{
-			TranslateMessage(&msg);
-			DispatchMessage(&msg); 
-		}
-		else if (keys[VK_ESCAPE]) done=true;
-		else
-		{
-#ifndef savevideo
-			if (setupcfg.music)
-			time=(cnsSynth_GetSync()+20);
-			else time=(timeGetTime()-StartTime);
+void mainloop() {
+    time = lasttime = 0;
+    int StartTime = timeGetTime();
+    while (!done) {
+#ifdef CONSPIRACY_LINUX
+        handleXevents();
 #else
-			time=timer;
-			timer+=3;
+        if (PeekMessage(&msg,NULL,0,0,PM_REMOVE))
+        {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+        else
 #endif
-			
+        if (keys[VK_ESCAPE]) done = true;
+        else {
 #ifndef savevideo
-			//if (lasttime<time)
-			{
+            if (setupcfg.music)
+                time = (cnsSynth_GetSync() + 20);
+            else time = (timeGetTime() - StartTime);
+#else
+            time=timer;
+            timer+=3;
 #endif
-				glClear(0x4100);
-				glLoadIdentity();
 
-				displayframe(time);
-				//0,45,32 es 0,22,63
+#ifndef savevideo
+            //if (lasttime<time)
+            {
+#endif
+                glClear(0x4100);
+                glLoadIdentity();
 
-				glPushAttrib(GL_ALL_ATTRIB_BITS);
-				glColor4f(0,linear(45.0f/255.0f,22.0f/255.0f,(float)time/271790.0f),linear(32.0f/255.0f,63.0f/255.0f,(float)time/271790.0f),0);
-				glDisable(GL_TEXTURE_2D);
-				glDisable(GL_LIGHTING);
-				glDisable(GL_BLEND);
-				glDisable(GL_DEPTH_TEST);
-				glBegin(GL_LINES);
-				glVertex2i(0,75);
-				glVertex2i(800,75);
-				glVertex2i(0,525);
-				glVertex2i(800,525);				
-				glEnd();
-				glPopAttrib();
+                displayframe(time);
+                //0,45,32 es 0,22,63
 
-				//Sleep(10);
+                glPushAttrib(GL_ALL_ATTRIB_BITS);
+                glColor4f(0, linear(45.0f / 255.0f, 22.0f / 255.0f,
+                                    (float) time / 271790.0f),
+                          linear(32.0f / 255.0f, 63.0f / 255.0f,
+                                 (float) time / 271790.0f), 0);
+                glDisable(GL_TEXTURE_2D);
+                glDisable(GL_LIGHTING);
+                glDisable(GL_BLEND);
+                glDisable(GL_DEPTH_TEST);
+                glBegin(GL_LINES);
+                glVertex2i(0, 75);
+                glVertex2i(800, 75);
+                glVertex2i(0, 525);
+                glVertex2i(800, 525);
+                glEnd();
+                glPopAttrib();
+
+                //Sleep(10);
 
 #ifdef savevideo
-				glReadPixels(0,0,xres,yres,GL_RGB,GL_UNSIGNED_BYTE,framebuffer);
-				sprintf(fname,"frames\\%.5d.bmp",timer/3);
-				frame=fopen(fname,"w+b");
-				byte a;
-				for (int x=0; x<640; x++)
-					for (int y=0; y<480; y++)
-					{
-						a=framebuffer[x][y][1];
-						framebuffer[x][y][1]=framebuffer[x][y][2];
-						framebuffer[x][y][2]=a;
-					}
-				fwrite(bmpheader,56,1,frame);
-				fwrite(framebuffer,xres*yres,3,frame);
+                glReadPixels(0,0,xres,yres,GL_RGB,GL_UNSIGNED_BYTE,framebuffer);
+                sprintf(fname,"frames\\%.5d.bmp",timer/3);
+                frame=fopen(fname,"w+b");
+                byte a;
+                for (int x=0; x<640; x++)
+                    for (int y=0; y<480; y++)
+                    {
+                        a=framebuffer[x][y][1];
+                        framebuffer[x][y][1]=framebuffer[x][y][2];
+                        framebuffer[x][y][2]=a;
+                    }
+                fwrite(bmpheader,56,1,frame);
+                fwrite(framebuffer,xres*yres,3,frame);
 
-				fclose(frame);
+                fclose(frame);
 
 #endif
-				SwapBuffers(hDC);
+                SwapBuffers(hDC);
 
 #ifndef savevideo
-				lasttime=time;
-			}
-			//Sleep(10);
+                lasttime = time;
+            }
+            //Sleep(10);
 #endif
 
 
-			if (time>=271790) done=true;
-			
-		}
+            if (time >= 271790) done = true;
 
-	}
+        }
+    }
 }
 
-typedef void (APIENTRY * WGLSWAPINTERVALEXT) (int);
-
+#ifdef CONSPIRACY_LINUX
+int main(int argc, char *argv[]) {
+    if (OpenSetupDialog(NULL))
+    {
+        Init();
+        mainloop();
+        KillGLWindow();
+    }
+    return 0;
+}
+#else
 INT WINAPI WinMain( HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, INT nCmdShow )
 {
 	hInstance=hInst;
@@ -244,3 +269,4 @@ INT WINAPI WinMain( HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, I
 	}
 	return 0;
 }
+#endif

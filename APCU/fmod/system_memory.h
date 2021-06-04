@@ -15,6 +15,7 @@
 
 // include your system's header here
 #include <stdlib.h>
+#include <string.h>
 
 // redefine here
 #define FSOUND_Memory_Free(_ptr)			free(_ptr)

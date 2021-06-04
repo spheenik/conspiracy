@@ -5,20 +5,20 @@
 #include <GL/gl.h>
 #include <GL/glu.h>
 #include "vectors.h"
-#include "track.h"
-#include "texgen.h"
+#include "Track.h"
+#include "TexGen.h"
 #include "introplayer.h"
 
 #define aDDict_default             0
 #define aDDict_flatshade           1
 #define aDDict_gouraudshade        2
 
-#define layer2d        1
-#define layer3d        2
-#define cleargl        3
-#define rendertotext   4
-#define feedback       5
-#define grideffect     6
+const int layer2d       = 1;
+const int layer3d       = 2;
+const int cleargl       = 3;
+const int rendertotext  = 4;
+const int feedback      = 5;
+const int grideffect    = 6;
 
 struct scrshot
 {

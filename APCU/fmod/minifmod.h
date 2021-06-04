@@ -18,6 +18,12 @@
 #ifndef _MINIFMOD_H_
 #define _MINIFMOD_H_
 
+#ifdef CONSPIRACY_LINUX
+#include <pulse/pulseaudio.h>
+#include <pulse/error.h>
+#endif
+
+
 //===============================================================================================
 //= DEFINITIONS
 //===============================================================================================
@@ -35,7 +41,9 @@ typedef struct FMUSIC_MODULE	FMUSIC_MODULE;
 //#include "music.h"
 
 #ifdef __cplusplus
-extern "C" {
+#define _EXTERN extern "C"
+#else
+#define _EXTERN extern
 #endif
 
 // ==================================
@@ -52,12 +60,12 @@ void FSOUND_File_SetCallbacks(int  (*ReadCallback)(void *buffer, int size),
                               int	 (*TellCallback)()
 															);
 */
-int	 (*FSOUND_File_Read)(void *buffer, int size);
-void (*FSOUND_File_Seek)(int pos, signed char mode);
-int	 (*FSOUND_File_Tell)();
+_EXTERN int	 (*FSOUND_File_Read)(void *buffer, int size);
+_EXTERN void (*FSOUND_File_Seek)(int pos, signed char mode);
+_EXTERN int	 (*FSOUND_File_Tell)();
 
-signed char		FSOUND_Init(int mixrate);
-void			FSOUND_Close();
+_EXTERN signed char		FSOUND_Init(int mixrate);
+_EXTERN void			FSOUND_Close();
 
 // =============================================================================================
 // FMUSIC API
@@ -67,19 +75,17 @@ void			FSOUND_Close();
 // =====================================
 //FMUSIC_MODULE *mod;
 
-FMUSIC_MODULE	* FMUSIC_LoadSong(SAMPLELOADCALLBACK sampleloadcallback, NOTELOADCALLBACK noteloadcallback);
-signed char	FMUSIC_FreeSong();
-signed char	FMUSIC_PlaySong(FMUSIC_MODULE	* mod);
-signed char	FMUSIC_StopSong();
+_EXTERN FMUSIC_MODULE	* FMUSIC_LoadSong(SAMPLELOADCALLBACK sampleloadcallback, NOTELOADCALLBACK noteloadcallback);
+_EXTERN signed char	FMUSIC_FreeSong();
+_EXTERN signed char	FMUSIC_PlaySong(FMUSIC_MODULE	* mod);
+_EXTERN signed char	FMUSIC_StopSong();
 
 // Runtime song information.
 // =========================
-int				FMUSIC_GetOrder();
-int				FMUSIC_GetRow();
-unsigned int	FMUSIC_GetTime();
+_EXTERN int				FMUSIC_GetOrder();
+_EXTERN int				FMUSIC_GetRow();
+_EXTERN unsigned int	FMUSIC_GetTime();
   
-#ifdef __cplusplus
-}
-#endif
+#undef _EXTERN
 
 #endif

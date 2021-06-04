@@ -10,10 +10,15 @@
 /* This source must not be redistributed without this notice.                 */
 /******************************************************************************/
 
+#ifdef CONSPIRACY_LINUX
+#include <stdio.h>
+#include <pthread.h>
+#endif
+
 #include "minifmod.h"
 
 #include "music_formatxm.h"
-#include "sound.h"
+#include "Sound.h"
 #include "system_memory.h"
 
 FMUSIC_MODULE *		FMUSIC_PlayingSong = NULL;
@@ -22,6 +27,10 @@ FMUSIC_TIMMEINFO *	FMUSIC_TimeInfo;
 FSOUND_SAMPLE		FMUSIC_DummySample;
 FSOUND_CHANNEL			FMUSIC_DummyChannel;
 FMUSIC_INSTRUMENT		FMUSIC_DummyInstrument;
+
+int	 (*FSOUND_File_Read)(void *buffer, int size);
+void (*FSOUND_File_Seek)(int pos, signed char mode);
+int	 (*FSOUND_File_Tell)();
 
 //= PRIVATE FUNCTIONS ==============================================================================
 
@@ -128,6 +137,11 @@ signed char FMUSIC_PlaySong(FMUSIC_MODULE	* mod)
 	// ========================================================================================================
 
 	{
+#ifdef CONSPIRACY_LINUX
+        int	length = FSOUND_BufferSize << 2;
+        FSOUND_MixBlock.length = length;
+        FSOUND_MixBlock.data = FSOUND_Memory_Calloc(length);
+#else
 		WAVEHDR	*wavehdr;
 		int	length = FSOUND_BufferSize << 2;
 
@@ -143,7 +157,7 @@ signed char FMUSIC_PlaySong(FMUSIC_MODULE	* mod)
 		wavehdr->dwUser				= 0;
 		wavehdr->dwLoops			= -1;
 		waveOutPrepareHeader(FSOUND_WaveOutHandle, wavehdr, sizeof(WAVEHDR));
-
+#endif
 	}
 
 	// ========================================================================================================
@@ -166,8 +180,14 @@ signed char FMUSIC_PlaySong(FMUSIC_MODULE	* mod)
 	// ========================================================================================================
 	// START THE OUTPUT
 	// ========================================================================================================
+#ifdef CONSPIRACY_LINUX
 
+    pa_stream_write(FSOUND_PA.stream, FSOUND_MixBlock.data, FSOUND_MixBlock.length, NULL, 0L, PA_SEEK_RELATIVE);
+    pa_stream_cork(FSOUND_PA.stream, 0, NULL, FSOUND_PA.mainloop);
+
+#else
 	waveOutWrite(FSOUND_WaveOutHandle, &FSOUND_MixBlock.wavehdr, sizeof(WAVEHDR));
+#endif
 
 	{
 		DWORD	FSOUND_dwThreadId;
@@ -177,9 +197,18 @@ signed char FMUSIC_PlaySong(FMUSIC_MODULE	* mod)
 		// ========================================================================================================
 		FSOUND_Software_Exit = FALSE;
 
+#ifdef CONSPIRACY_LINUX
+        pthread_create(&FSOUND_Thread, NULL, FSOUND_Software_DoubleBufferThread, NULL);
+
+        struct sched_param params;
+        params.sched_priority = sched_get_priority_max(SCHED_FIFO);
+        pthread_setschedparam(FSOUND_Thread, SCHED_FIFO, &params);
+
+#else
 		FSOUND_Software_hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)FSOUND_Software_DoubleBufferThread, 0,0, &FSOUND_dwThreadId);
 
 		SetThreadPriority(FSOUND_Software_hThread, THREAD_PRIORITY_TIME_CRITICAL);	// THREAD_PRIORITY_HIGHEST);
+#endif
 	}
 	return TRUE;
 }
@@ -250,6 +279,6 @@ signed char FMUSIC_StopSong(FMUSIC_MODULE *mod)
 
 //= INFORMATION FUNCTIONS ======================================================================
 
-int FMUSIC_GetOrder()         {	return FMUSIC_TimeInfo[FSOUND_Software_RealBlock].order; }
-int FMUSIC_GetRow()           {	return FMUSIC_TimeInfo[FSOUND_Software_RealBlock].row; }
-unsigned int FMUSIC_GetTime() {	return FMUSIC_TimeInfo[FSOUND_Software_RealBlock].ms; }
+int FMUSIC_GetOrder()         {	while (FSOUND_Software_UpdateMutex); return FMUSIC_TimeInfo[FSOUND_Software_RealBlock].order; }
+int FMUSIC_GetRow()           {	while (FSOUND_Software_UpdateMutex); return FMUSIC_TimeInfo[FSOUND_Software_RealBlock].row; }
+unsigned int FMUSIC_GetTime() {	while (FSOUND_Software_UpdateMutex); return FMUSIC_TimeInfo[FSOUND_Software_RealBlock].ms; }

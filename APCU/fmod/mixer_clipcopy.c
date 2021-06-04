@@ -10,7 +10,7 @@
 /* This source must not be redistributed without this notice.                 */
 /******************************************************************************/
 
-#include "sound.h"
+#include "Sound.h"
 
 static unsigned long mix_temp1		= 0;
 static const float	 mix_3times2pow51 = 3.0f * (float)(1L<<25) * (float)(1L<<26);
@@ -44,13 +44,22 @@ void FSOUND_MixerClipCopy_Float32(void *dest, void *src, long len)
 	for (count=0; count<len<<1; count++)
 	{
 		int val;
-		__asm
+#ifdef CONSPIRACY_LINUX
+        __asm(
+        "flds (%0)\n"
+        "add $4, %0\n"
+        "fistpl %1\n"
+        : "+r" (srcptr), "=m" (val)
+        );
+#elif
+        __asm
 		{
 			mov eax, srcptr
 			fld [eax]
 			add srcptr, 4
 			fistp val
 		}
+#endif
 		*destptr++ = (val < -32768 ? -32768 : val > 32767 ? 32767 : val);
 	}
 		
