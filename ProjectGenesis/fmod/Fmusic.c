@@ -279,6 +279,6 @@ signed char FMUSIC_StopSong(FMUSIC_MODULE *mod)
 
 //= INFORMATION FUNCTIONS ======================================================================
 
-int FMUSIC_GetOrder()         {	return FMUSIC_TimeInfo[FSOUND_Software_RealBlock].order; }
-int FMUSIC_GetRow()           {	return FMUSIC_TimeInfo[FSOUND_Software_RealBlock].row; }
-unsigned int FMUSIC_GetTime() {	return FMUSIC_TimeInfo[FSOUND_Software_RealBlock].ms; }
+int FMUSIC_GetOrder()         {	while (FSOUND_Software_UpdateMutex); return FMUSIC_TimeInfo[FSOUND_Software_RealBlock].order; }
+int FMUSIC_GetRow()           {	while (FSOUND_Software_UpdateMutex); return FMUSIC_TimeInfo[FSOUND_Software_RealBlock].row; }
+unsigned int FMUSIC_GetTime() {	while (FSOUND_Software_UpdateMutex); return FMUSIC_TimeInfo[FSOUND_Software_RealBlock].ms; }

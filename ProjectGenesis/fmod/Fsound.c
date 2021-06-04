@@ -22,6 +22,7 @@
 
 #ifdef CONSPIRACY_LINUX
 #include <stdio.h>
+#include <pulse/pulseaudio.h>
 #else
 #include <mmsystem.h>
 #endif
@@ -52,7 +53,6 @@ FSOUND_PAConnection     FSOUND_PA;
 pthread_t   			FSOUND_Thread;
 
 void context_state_cb(pa_context* context, void* mainloop) {
-    printf("state_cb\n");
     pa_threaded_mainloop_signal(mainloop, 0);
 }
 
@@ -116,7 +116,7 @@ signed char FSOUND_Init(int mixrate)
         FSOUND_PA.api = pa_threaded_mainloop_get_api(FSOUND_PA.mainloop);
         assert(FSOUND_PA.api);
 
-		FSOUND_PA.context = pa_context_new(FSOUND_PA.api, "project-genesis");
+		FSOUND_PA.context = pa_context_new(FSOUND_PA.api, NULL);
         assert(FSOUND_PA.context);
 
         pa_context_set_state_callback(FSOUND_PA.context, context_state_cb, FSOUND_PA.mainloop);
@@ -397,41 +397,46 @@ DWORD FSOUND_Software_DoubleBufferThread(LPDWORD lpdwParam)
 
 	while (!FSOUND_Software_Exit)
 	{
-		int		cursorpos,cursorblock,prevblock;
+		unsigned int		cursorpos,cursorblock,prevblock;
 #ifdef CONSPIRACY_LINUX
 		pa_usec_t usec;
-        pa_stream_get_time(FSOUND_PA.stream, &usec);
-        //printf("usec: %llu\n", usec);
-        cursorpos = pa_usec_to_bytes(usec, &FSOUND_PA.sample_spec) >> 2;
-#else
-        MMTIME	mmt;
+		if (pa_stream_get_time(FSOUND_PA.stream, &usec) == 0) {
 
-		mmt.wType = TIME_BYTES;
-		waveOutGetPosition(FSOUND_WaveOutHandle, &mmt, sizeof(MMTIME));
-		mmt.u.cb >>= 2;
-		cursorpos = mmt.u.cb;
+			//printf("usec: %llu\n", usec);
+			cursorpos = pa_usec_to_bytes(usec, &FSOUND_PA.sample_spec) >> 2;
+#else
+			MMTIME	mmt;
+
+			mmt.wType = TIME_BYTES;
+			waveOutGetPosition(FSOUND_WaveOutHandle, &mmt, sizeof(MMTIME));
+			mmt.u.cb >>= 2;
+			cursorpos = mmt.u.cb;
 #endif
 
-		cursorpos %= FSOUND_BufferSize;
-		cursorblock = cursorpos / FSOUND_BlockSize;
+			cursorpos %= FSOUND_BufferSize;
+			cursorblock = cursorpos / FSOUND_BlockSize;
 
-		prevblock = cursorblock - 1;
-		if (prevblock < 0)
-			prevblock = totalblocks - 1;
+			prevblock = cursorblock - 1;
+			if (prevblock < 0)
+				prevblock = totalblocks - 1;
 
-		while (FSOUND_Software_FillBlock != cursorblock)
-		{
-			FSOUND_Software_UpdateMutex = TRUE;
+			while (FSOUND_Software_FillBlock != cursorblock)
+			{
+				unsigned int offset = FSOUND_Software_FillBlock * (FSOUND_BlockSize << 2);
 
-            int blocknum = FSOUND_Software_FillBlock;
-			FSOUND_Software_Fill();
-            pa_stream_write(FSOUND_PA.stream, FSOUND_MixBlock.data + FSOUND_BlockSize * (blocknum << 2), FSOUND_BlockSize << 2, NULL, 0, PA_SEEK_RELATIVE);
-	
-			FSOUND_Software_RealBlock++;
-			if (FSOUND_Software_RealBlock >= totalblocks)
-				FSOUND_Software_RealBlock = 0;
+				FSOUND_Software_UpdateMutex = TRUE;
 
-			FSOUND_Software_UpdateMutex = FALSE;
+				FSOUND_Software_Fill();
+
+				FSOUND_Software_RealBlock++;
+				if (FSOUND_Software_RealBlock >= totalblocks)
+					FSOUND_Software_RealBlock = 0;
+
+				FSOUND_Software_UpdateMutex = FALSE;
+
+				pa_stream_write(FSOUND_PA.stream, FSOUND_MixBlock.data + offset, FSOUND_BlockSize << 2, NULL, 0, PA_SEEK_RELATIVE);
+
+			}
 		}
 
 		Sleep(5);
