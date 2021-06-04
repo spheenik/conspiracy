@@ -1,4 +1,4 @@
-#include "texgen.h"
+#include "TexGen.h"
 
 char *fonts[8];
 

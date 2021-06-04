@@ -1,8 +1,8 @@
 #include "intro.h"
 #include "introgen.h"
 //#include <windows.h>
-//#include <gl\gl.h>
-//#include <gl\glu.h>
+//#include <GL/gl.h>
+//#include <GL/glu.h>
 
 char boxvertices[] =
 	{  -5,-5,-5, 5,-5,-5, 5, 5,-5,-5, 5,-5, 0, 0,-5, 5,-5, 5, 5, 5, 5, 5, 0, 0,

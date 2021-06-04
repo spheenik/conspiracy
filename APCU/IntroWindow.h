@@ -3,8 +3,8 @@
 
 #include <windows.h>
 #include <winuser.h>
-#include <gl\gl.h>
-#include <gl\glu.h>
+#include <GL/gl.h>
+#include <GL/glu.h>
 
 extern HDC			hDC;
 extern HGLRC		hRC;
