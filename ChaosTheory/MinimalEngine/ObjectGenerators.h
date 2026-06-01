@@ -1,8 +1,8 @@
 #ifndef __OBJECTGENERATORS__
 #define __OBJECTGENERATORS__
 
-#include "vectors.h"
-#include "3dengine.h"
+#include "Vectors.h"
+#include "3DEngine.h"
 #include "includelist.h"
 
 #ifdef INCLUDE_OBJ_BOX

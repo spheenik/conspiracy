@@ -1,5 +1,5 @@
 #include "aDDict2Engine.h"
-#include "Resource.h"
+#include "resource.h"
 #include "includelist.h"
 
 //#define RELEASETYPE_DEMO
@@ -16,19 +16,27 @@ PSelect *PolySelectList;
 void Initialize()
 {
 	AspectRatio=setupcfg.AspectRatio;
+#ifdef CONSPIRACY_LINUX
+	Intro_CreateWindow("Chaos Theory by Conspiracy",setupcfg.mode,setupcfg.fullscreen==1,0,setupcfg.alwaysontop==1);
+#else
 	Intro_CreateWindow("Chaos Theory by Conspiracy",setupcfg.mode,setupcfg.fullscreen==1,LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON2)),setupcfg.alwaysontop==1);
+#endif
 	//WriteDebug("Window Created.\n");
 	glClear(0x4100);
 	SwapBuffers(hDC);
+#ifdef CONSPIRACY_LINUX
+	handleXevents();
+#else
 	if (PeekMessage(&msg,NULL,0,0,PM_REMOVE))
 	{
 		TranslateMessage(&msg);
-		DispatchMessage(&msg); 
+		DispatchMessage(&msg);
 	}
+#endif
 }
 
-#include "data\project.h"
-#include "data\precalc.h"
+#include "Data/project.h"
+#include "Data/precalc.h"
 
 #define BINARY_DECLARE(x) \
 extern "C" char x[];\
@@ -36,7 +44,9 @@ extern "C" int x##_size;
 
 BINARY_DECLARE(music);
 
-#ifdef RELEASETYPE_DEMO
+#if defined(CONSPIRACY_LINUX)
+// Phase 1: no audio backend (music forced off, wall-clock timing).
+#elif defined(RELEASETYPE_DEMO)
 #pragma comment(lib,"bass.lib")
 #include "bass.h"
 int MusicType=0;
@@ -65,7 +75,9 @@ void PrecalcIntro()
 
 	if (setupcfg.music)
 	{
-#ifdef RELEASETYPE_DEMO
+#if defined(CONSPIRACY_LINUX)
+		// phase 1: silent
+#elif defined(RELEASETYPE_DEMO)
 		if (!BASS_Init(1,44100,0,hWnd,NULL)) exit(0);
 		str=BASS_StreamCreateFile(true,music,0,music_size,0);
 #else
@@ -87,7 +99,9 @@ void PlayIntro()
 	//WriteDebug("Play Start.\n");
 	if (setupcfg.music)
 	{
-#ifdef RELEASETYPE_DEMO
+#if defined(CONSPIRACY_LINUX)
+		// phase 1: silent
+#elif defined(RELEASETYPE_DEMO)
 		BASS_StreamPlay(str,FALSE,0);
 #else
 		mvxSystem_Play();
@@ -98,24 +112,33 @@ void PlayIntro()
 	int Time=0;
 	while (!Done)
 	{
+#ifdef CONSPIRACY_LINUX
+		handleXevents();
+		if (Keys[VK_ESCAPE]) Done=true;
+		else
+#else
 		if (PeekMessage(&msg,NULL,0,0,PM_REMOVE))
 		{
 			TranslateMessage(&msg);
-			DispatchMessage(&msg); 
+			DispatchMessage(&msg);
 		}
 		else if (Keys[VK_ESCAPE]) Done=true;
 		else
+#endif
 		{
 			glDisable(GL_SCISSOR_TEST);
 
 			glClear(0x4100);
 
-#ifdef RELEASETYPE_DEMO
+#if defined(CONSPIRACY_LINUX)
+			Time=(int)((timeGetTime()-StartTime)/10);
+#elif defined(RELEASETYPE_DEMO)
 			if (setupcfg.music) Time=(int)(BASS_ChannelBytes2Seconds(str,BASS_ChannelGetPosition(str))*100.0f);
+			else                Time=(int)((timeGetTime()-StartTime)/10);
 #else
 			if (setupcfg.music) Time=(int)(mvxSystem_GetSync()/10.0f);
-#endif
 			else                Time=(int)((timeGetTime()-StartTime)/10);
+#endif
 			//Time+=10;
 			
 			DisplayFrame(Time, MaterialList, SceneList, WorldList, EventList, EventNum);
@@ -129,10 +152,16 @@ void PlayIntro()
 
 typedef void (APIENTRY * WGLSWAPINTERVALEXT) (int);
 
+#ifdef CONSPIRACY_LINUX
+int main(int argc, char *argv[])
+{
+	(void)argc; (void)argv;
+#else
 INT WINAPI WinMain( HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, INT nCmdShow )
 {
 	//WriteDebug("start.");
 	hInstance=hInst;
+#endif
 /*#ifdef _DEBUG
 	setupcfg.fullscreen=0;
 	setupcfg.music=0;
@@ -143,19 +172,27 @@ INT WINAPI WinMain( HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, I
 /*#else/**/
 
 	//WriteDebug("cfg done.");
-	if (OpenSetupDialog(GetModuleHandle(NULL))) 
+#ifdef CONSPIRACY_LINUX
+	if (OpenSetupDialog(0))
+#else
+	if (OpenSetupDialog(GetModuleHandle(NULL)))
+#endif
 	{
 		Initialize();
 		PrecalcIntro();
+#ifndef CONSPIRACY_LINUX
 		if (setupcfg.vsync)
 		{
 			WGLSWAPINTERVALEXT wglSwapIntervalEXT = (WGLSWAPINTERVALEXT) wglGetProcAddress("wglSwapIntervalEXT");
 			if (wglSwapIntervalEXT) wglSwapIntervalEXT(1); // enable vertical synchronisation
 		}
+#endif
 		PlayIntro();
 		if (setupcfg.music)
 		{
-#ifdef RELEASETYPE_DEMO
+#if defined(CONSPIRACY_LINUX)
+			// phase 1: silent
+#elif defined(RELEASETYPE_DEMO)
 			BASS_ChannelStop(str);
 			BASS_StreamFree(str);
 #else

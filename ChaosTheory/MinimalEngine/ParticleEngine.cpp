@@ -1,5 +1,5 @@
 #include "ParticleEngine.h"
-#include "3dEngine.h"
+#include "3DEngine.h"
 #include "includelist.h"
 #ifdef INCLUDE_PARTICLE_ENGINE
 

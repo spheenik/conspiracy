@@ -3,14 +3,16 @@
 #include "writer.h"
 
 #ifdef INCLUDE_EVENT_CAVE
-#include "Cubes.h"
+#include "cubes.h"
 #endif
 
 CAMERA CamBuffer;
 VECTOR3 EyeShake,TargetShake;
 
+#ifndef CONSPIRACY_LINUX
 PFNGLMULTITEXCOORD2FARBPROC glMultiTexCoord2fARB;
 PFNGLACTIVETEXTUREARBPROC glActiveTextureARB;
+#endif
 RENDERTEXTURESLOT RenderTextures[6];
 
 /*PFNGLGENBUFFERSARBPROC glGenBuffersARB = NULL;
@@ -42,11 +44,13 @@ void InitIntroEditorEffects()
 		MessageBox( 0, "Required extensions not supported. IBJ...", "Error!", MB_OK );
 		exit(0);
 	}
+#ifndef CONSPIRACY_LINUX
 	glMultiTexCoord2fARB = (PFNGLMULTITEXCOORD2FARBPROC)wglGetProcAddress("glMultiTexCoord2fARB");
 	if (!glMultiTexCoord2fARB) exit(0);
-	
+
 	glActiveTextureARB = (PFNGLACTIVETEXTUREARBPROC)wglGetProcAddress("glActiveTextureARB");
 	if (!glActiveTextureARB) exit(0);
+#endif
 
 	/*glGenBuffersARB = (PFNGLGENBUFFERSARBPROC) wglGetProcAddress("glGenBuffersARB");
 	if (!glGenBuffersARB) exit(0);

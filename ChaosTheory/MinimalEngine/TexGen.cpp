@@ -1,4 +1,6 @@
 #include "TexGen.h"
+#include <string.h>
+#include <windows.h>	// re-assert min/max (defined outside its guard) after TexGen.h's <cmath>
 
 TEXTURE *TextureList=NULL;
 
@@ -17,41 +19,28 @@ TEXTURE *TextureList=NULL;
 float * distancebuffer;
 
 void memcpy_dw(void * to, void * from, int count) {
-	__asm {
-		mov edi,to
-		mov esi,from
-		mov ecx,count
-		rep movsd
-	}
+	memcpy(to, from, (size_t)count * 4);		// rep movsd = copy `count` dwords
 }
 
+// Exact replication of the original MMX byte-wise colour lerp:
+//   per channel: c1 + (((c2-c1) * alpha) >> 8), in 16-bit lanes, with paddb
+//   (byte wrap on the low byte) then packuswb (signed saturate to 0..255).
 unsigned int interpolate_colors(unsigned int c1, unsigned int c2, unsigned int alpha) {
-	unsigned int r;
-	__asm {
-		pxor mm7,mm7
-		movd mm0,c1
-		movd mm1,c2
-
-		mov eax,alpha
-		shl eax,16
-		add eax,alpha
-		movd mm3,eax
-		movq mm2,mm3  
-		punpckldq mm3,mm2
-
-		punpcklbw mm0,mm7
-		punpcklbw mm1,mm7
-		psubw mm1,mm0
-  
-		pmullw mm1,mm3
-		psrlw mm1,8
-		paddb mm1,mm0
-		packuswb mm1,mm7
-  
-		movd r,mm1
-		emms;
+	unsigned int aw = alpha & 0xFFFF;			// movd of (alpha|alpha<<16), same in every word
+	unsigned int res = 0;
+	for (int ch = 0; ch < 4; ch++) {
+		unsigned int b1 = (c1 >> (ch*8)) & 0xFF;
+		unsigned int b2 = (c2 >> (ch*8)) & 0xFF;
+		unsigned short diff    = (unsigned short)(b2 - b1);				// psubw
+		unsigned short prod    = (unsigned short)(diff * aw);			// pmullw (low 16)
+		unsigned short shifted = (unsigned short)(prod >> 8);			// psrlw
+		unsigned char  lo = (unsigned char)((shifted & 0xFF) + b1);		// paddb low byte (wraps)
+		unsigned char  hi = (unsigned char)(shifted >> 8);				// paddb high byte (+0)
+		short word = (short)((hi << 8) | lo);
+		unsigned char r = word < 0 ? 0 : (word > 255 ? 255 : (unsigned char)word);	// packuswb
+		res |= (unsigned int)r << (ch*8);
 	}
-	return r;
+	return res;
 }
 
 #ifdef __TEXGEN_BILINEAR__
@@ -70,68 +59,23 @@ unsigned int TEXTURE::Bilinear(RGBA * Layer,unsigned int u, unsigned int v) {
 }
 #endif
 
+// Per-channel byte operators. Each processes one colour byte across `opsize`
+// pixels at stride 4 (Old/New are pre-offset to the channel by the caller).
 void __stdcall operator_asm_add(RGBA*Old, RGBA*New,int opsize) {
-	__asm {
-		mov ecx,opsize
-		mov esi,New
-		mov edi,Old
-		addloop:
-			movd mm0,[edi]
-			movd mm1,[esi]
-			paddusb mm0,mm1
-			movd eax,mm0
-			stosb
-			add edi,3
-			add esi,4
-		loop addloop
-		emms
-	}
+	unsigned char *d=(unsigned char*)Old, *s=(unsigned char*)New;
+	for (int n=0;n<opsize;n++){ int v=d[0]+s[0]; d[0]=(unsigned char)(v>255?255:v); d+=4; s+=4; }
 }
 void __stdcall operator_asm_sub(RGBA*Old, RGBA*New,int opsize) {
-	__asm {
-		mov ecx,opsize
-		mov esi,New
-		mov edi,Old
-		subloop:
-			movd mm0,[edi]
-			movd mm1,[esi]
-			psubusb mm0,mm1
-			movd eax,mm0
-			stosb
-			add edi,3
-			add esi,4
-		loop subloop
-		emms
-	}
+	unsigned char *d=(unsigned char*)Old, *s=(unsigned char*)New;
+	for (int n=0;n<opsize;n++){ int v=d[0]-s[0]; d[0]=(unsigned char)(v<0?0:v); d+=4; s+=4; }
 }
 void __stdcall operator_asm_mul(RGBA*Old, RGBA*New,int opsize) {
-	__asm {
-		mov ecx,opsize
-		mov esi,New
-		mov edi,Old
-		xor eax,eax
-		mulloop:
-			lodsb
-			mul [edi]
-			shr eax,8
-			stosb
-			add edi,3
-			add esi,3
-		loop mulloop
-		emms
-	}	
+	unsigned char *d=(unsigned char*)Old, *s=(unsigned char*)New;
+	for (int n=0;n<opsize;n++){ d[0]=(unsigned char)((d[0]*s[0])>>8); d+=4; s+=4; }
 }
 void __stdcall operator_asm_sel(RGBA*Old, RGBA*New,int opsize) {
-	__asm {
-		mov ecx,opsize
-		mov esi,New
-		mov edi,Old
-		selloop:
-			movsb
-			add edi,3
-			add esi,3
-		loop selloop
-	}
+	unsigned char *d=(unsigned char*)Old, *s=(unsigned char*)New;
+	for (int n=0;n<opsize;n++){ d[0]=s[0]; d+=4; s+=4; }
 }
 
 typedef void (WINAPI * OPERATORPROC)(RGBA*,RGBA*,int);
@@ -231,29 +175,12 @@ void TEXTURE::Blur(RGBA* Layer, COMMAND* Parameters) {
 				unsigned int r10 = Layer[WRAPX(i  )+WRAPY(j-s)*XRes].dw;
 				unsigned int r12 = Layer[WRAPX(i  )+WRAPY(j+s)*XRes].dw;
 				unsigned int z=0;
-				__asm {
-					pxor mm0,mm0
-					pxor mm7,mm7
-
-					movd mm1,r01
-					punpcklbw mm1,mm7
-					paddw mm0,mm1
-
-					movd mm1,r21
-					punpcklbw mm1,mm7
-					paddw mm0,mm1
-
-					movd mm1,r10
-					punpcklbw mm1,mm7
-					paddw mm0,mm1
-
-					movd mm1,r12
-					punpcklbw mm1,mm7
-					paddw mm0,mm1
-
-					psrlw mm0,2
-					packuswb mm0,mm7
-					movd z,mm0;
+				for (int ch=0; ch<4; ch++) {				// (r01+r21+r10+r12) >> 2 per channel
+					int sum = ((r01>>(ch*8))&0xFF) + ((r21>>(ch*8))&0xFF)
+					        + ((r10>>(ch*8))&0xFF) + ((r12>>(ch*8))&0xFF);
+					sum >>= 2;
+					if (sum>255) sum=255;
+					z |= (unsigned int)sum << (ch*8);
 				}
 
 				buffer[offset].dw=z;
@@ -264,7 +191,6 @@ void TEXTURE::Blur(RGBA* Layer, COMMAND* Parameters) {
 		//memcpy(Layer,buffer,XRes*YRes*sizeof(RGBA));
 		memcpy_dw(Layer,buffer,XRes*YRes);
 	}
-	__asm { emms }
 	delete[] buffer;
 }
 #endif
@@ -320,6 +246,12 @@ char * fonts[]={
 	"Symbol"
 };
 
+#ifdef CONSPIRACY_LINUX
+void TEXTURE::Text(RGBA* Layer, COMMAND* Parameters) {
+	// Win32 GDI font rendering not ported yet; produce an empty (black) layer.
+	memset(Layer, 0, XRes*YRes*sizeof(RGBA));
+}
+#else
 void TEXTURE::Text(RGBA* Layer, COMMAND* Parameters) {
 	RGBA * buffer = new RGBA[XRes*YRes];
 	TEXTTEMPLATE * t = (TEXTTEMPLATE*)Parameters->data;
@@ -371,6 +303,7 @@ void TEXTURE::Text(RGBA* Layer, COMMAND* Parameters) {
 		//DeleteObject(bm);
 	}
 }
+#endif // CONSPIRACY_LINUX
 #endif
 
 unsigned char catmullrom_interpolate(float v0, float v1, float v2, float v3, unsigned int x, unsigned int distance)
@@ -381,14 +314,9 @@ unsigned char catmullrom_interpolate(float v0, float v1, float v2, float v3, uns
 	float R =  v2 - v0;
 	int t=(int)((P*xx*xx*xx) + (Q*xx*xx) + (R*xx) + v1);
 
-	_asm {
-		movd mm0,t
-		packuswb mm0,mm0
-		movd t,mm0
-		emms;
-	}
+	short w0 = (short)(t & 0xFFFF);						// packuswb: saturate low signed word to a byte
+	t = w0 < 0 ? 0 : (w0 > 255 ? 255 : (int)w0);
 
-//	if (t<0) t=0; if (t>255) t=255;
 	return t;
 }
 
@@ -459,23 +387,10 @@ void TEXTURE::FractalPlasma(RGBA* Layer, COMMAND* Parameters) {
 		float bf = (float)(s->Blend-0x80);
 		float tf = (x - s->Min)/(float)(z-1)-0.5f;
 		int masik = (int)((255/z) * ((bf*tf)/127.0f+0.5f) * 2);
-		__asm{
-			mov esi,buffer
-			mov edi,buffer2
-			mov ecx,opsize
-			xor eax,eax
-			xor edx,edx
-			fploop:
-				xor eax,eax
-				lodsb
-				mov ebx,ecx
-				mov ecx,masik
-        mul cl
-				shr ax,8
-				mov ecx,ebx
-				add [edi],al
-				inc edi
-			loop fploop
+		unsigned char mcl = (unsigned char)masik;			// mul uses CL = low byte of masik
+		for (int i=0; i<opsize; i++) {
+			unsigned int ax = (unsigned int)buffer[i] * mcl;	// AL*CL
+			buffer2[i] = (unsigned char)(buffer2[i] + ((ax>>8)&0xFF));	// add al, byte wrap
 		}
 	}
   for (int zx=0;zx<XRes;zx++)
@@ -544,41 +459,23 @@ void apply_brightness(RGBA* Layer, unsigned char * brightmap, int rx, int ry) {
 			unsigned char d=brightmap[ofs];
 			RGBA * p=Layer+ofs;
 			if (d>128) {
-				unsigned int dw=(unsigned char)(d-128)*0x01010101;
-				__asm {
-					pxor mm7,mm7
-/**/			pcmpeqb mm6,mm6
-					mov edi,p
-					movd mm0,[edi]
-					movd mm1,dw
-/**/			movq mm2,mm0
-/**/			pxor mm0,mm6
-					punpcklbw mm0,mm7
-					punpcklbw mm1,mm7
-					pmullw mm0,mm1
-					psrlw mm0,7
-					packuswb mm0,mm7
-/**/			paddusb mm0,mm2
-					movd [edi],mm0
+				unsigned int db=(unsigned char)(d-128);				// screen towards white
+				for (int ch=0; ch<4; ch++) {
+					unsigned int pb=p->c[ch];
+					unsigned int v=((255-pb)*db)>>7;  if (v>255) v=255;	// packuswb
+					unsigned int o=pb+v;              if (o>255) o=255;	// paddusb (against original)
+					p->c[ch]=(unsigned char)o;
 				}
 			}
 			else {
-				unsigned int dw=d*0x01010101;
-				__asm {
-					pxor mm7,mm7
-					mov edi,p
-					movd mm0,[edi]
-					movd mm1,dw
-					punpcklbw mm0,mm7
-					punpcklbw mm1,mm7
-					pmullw mm0,mm1
-					psrlw mm0,7
-					packuswb mm0,mm7
-					movd [edi],mm0
+				unsigned int db=d;									// darken
+				for (int ch=0; ch<4; ch++) {
+					unsigned int pb=p->c[ch];
+					unsigned int v=(pb*db)>>7;  if (v>255) v=255;	// packuswb
+					p->c[ch]=(unsigned char)v;
 				}
 			}
 		}
-	__asm{ emms };
 }
 
 #ifdef INCLUDE_TEX_Shade
@@ -587,15 +484,7 @@ void TEXTURE::Shade(RGBA* Layer, COMMAND* Parameters) {
 	int opsize=XRes*YRes;
 	unsigned char * buffer = new unsigned char[opsize];
 	unsigned char * l=(unsigned char*)(Layers[s->DataLayer].Data)+s->DataChannel;
-	__asm{
-		mov esi,l
-		mov edi,buffer
-		mov ecx,opsize
-		shadeloop:
-			movsb
-			add esi,3
-		loop shadeloop
-	}
+	for (int i=0; i<opsize; i++) buffer[i]=l[i*4];		// gather one channel (stride 4) into buffer
 	apply_brightness(Layer,buffer,XRes,YRes);
 	delete[] buffer;
 
@@ -736,15 +625,7 @@ void TEXTURE::MixMap(RGBA* Layer, COMMAND* Parameters) {
 #ifdef INCLUDE_TEX_Invert
 void TEXTURE::Invert(RGBA* Layer, COMMAND* Parameters) {
 	int opsize=XRes*YRes;
-	__asm{
-		mov edi,Layer
-		mov ecx,opsize
-		invloop:
-			mov eax,[edi]
-			xor eax,0xFFFFFFFF
-			stosd
-		loop invloop
-	}
+	for (int i=0; i<opsize; i++) Layer[i].dw ^= 0xFFFFFFFF;		// invert all channels
 }
 #endif
 
@@ -1011,16 +892,7 @@ void TEXTURE::Crystalize(RGBA* Layer, COMMAND* Parameters) {
 			for (p=0; p<z; p++) {
 				int sx=XRes2-WRAPX(x+dots[p][0]);
 				int sy=YRes2-WRAPY(y+dots[p][1]);
-				int r2;
-				__asm {
-					fild sx
-					fmul st(0),st(0)
-					fild sy
-					fmul st(0),st(0)
-					faddp st(1),st(0)
-					fsqrt
-					fistp r2
-				}
+				int r2 = (int)lrint(sqrt((double)(sx*sx + sy*sy)));	// fistp = round-to-nearest
  				if (r2<r) { r=r2; cp=p; }
 			}
 			buffer[x+y*XRes].dw =
@@ -1295,7 +1167,9 @@ void TEXTURE::Dots(RGBA* Layer, COMMAND* Parameters) {
 #endif
 
 #ifdef INCLUDE_TEX_Jpeg
+#ifndef CONSPIRACY_LINUX
 #include <olectl.h>
+#endif
 
 //Az eredeti, wmf-et is tudo kod van itt kicommentelve
 //a chaos theoryhoz kivettem a wmf supportot
@@ -1461,7 +1335,15 @@ void TEXTURE::Dots(RGBA* Layer, COMMAND* Parameters) {
 	}
 }*/
 
-void TEXTURE::Jpeg(RGBA* Layer, COMMAND* Parameters) 
+#ifdef CONSPIRACY_LINUX
+// Phase 1: the original JPEG loader uses Win32 OLE (OleLoadPictureEx). Stub to a
+// blank texture for now; a libjpeg-based decode can replace this later.
+void TEXTURE::Jpeg(RGBA* Layer, COMMAND* Parameters)
+{
+	memset(Layer, 0, XRes*YRes*4);
+}
+#else
+void TEXTURE::Jpeg(RGBA* Layer, COMMAND* Parameters)
 {
 	JPEGTEMPLATE * r = (JPEGTEMPLATE*)Parameters->data;
 	//if (r->JPEGData)
@@ -1562,6 +1444,7 @@ void TEXTURE::Jpeg(RGBA* Layer, COMMAND* Parameters)
 
 	}
 }
+#endif // CONSPIRACY_LINUX
 
 #endif
 

@@ -1,6 +1,6 @@
 #pragma once
-#include "vectors.h"
-#include "3dEngine.h"
+#include "Vectors.h"
+#include "3DEngine.h"
 
 class SCENE;
 

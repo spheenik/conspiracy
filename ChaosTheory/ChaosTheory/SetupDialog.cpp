@@ -4,6 +4,22 @@
 
 SETUPCFG setupcfg;
 
+#ifdef CONSPIRACY_LINUX
+int OpenSetupDialog(HINSTANCE hInstance)
+{
+	setupcfg.mode.dmPelsWidth  = 1280;
+	setupcfg.mode.dmPelsHeight = 720;		// 16:9, matches the intro's internal letterbox
+	setupcfg.mode.dmBitsPerPel = 32;
+	setupcfg.fullscreen  = 0;
+	setupcfg.music       = 0;				// phase 1: silent (mvx synth not ported yet)
+	setupcfg.vsync       = 1;
+	setupcfg.alwaysontop = 0;
+	setupcfg.AspectRatio = 16/9.0f;
+	setupcfg.cancel      = 0;
+	return 1;
+}
+#else
+
 typedef struct {
 	int w,h;
 } RES;
@@ -143,3 +159,4 @@ BOOL CALLBACK DlgFunc( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam){
 int OpenSetupDialog(HINSTANCE hInstance) {
 	return DialogBox(hInstance,MAKEINTRESOURCE(IDD_SETUP),GetForegroundWindow(),DlgFunc);
 }
+#endif // CONSPIRACY_LINUX

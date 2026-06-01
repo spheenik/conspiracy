@@ -2,8 +2,8 @@
 
 #include <windows.h>
 #include "SetupDialog.h"
-#include <gl\gl.h>
-#include <gl\glu.h>
+#include <GL/gl.h>
+#include <GL/glu.h>
 
 #pragma comment(lib,"opengl32.lib")
 #pragma comment(lib,"glu32.lib")
@@ -24,6 +24,11 @@ extern int XRes,YRes;
 void Intro_CreateWindow(char* Title, DEVMODE m, bool FullScreenFlag, HICON Icon, bool);
 void Intro_DestroyWindow(bool);
 void SwitchTo2D();
+
+#ifdef CONSPIRACY_LINUX
+void handleXevents();
+void SwapBuffers(HDC hdc);
+#endif
 
 //void WriteDebug(const char *fmt, ...);
 

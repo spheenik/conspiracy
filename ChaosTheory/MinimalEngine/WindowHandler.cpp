@@ -1,6 +1,102 @@
-#include "windowhandler.h"
+#include "WindowHandler.h"
 //#include "windows.h"
 
+#ifdef CONSPIRACY_LINUX
+// ===================== Linux / GLX implementation =====================
+#include <X11/X.h>
+#include <X11/Xlib.h>
+#include <GL/glx.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+HDC			hDC=NULL;
+HGLRC		hRC=NULL;
+HWND		hWnd=NULL;
+HINSTANCE	hInstance;
+MSG			msg;
+bool		Keys[256];
+bool		Active = true;
+bool		Done = false;
+int			XRes, YRes;
+
+static Display		*dpy = NULL;
+static Window		win;
+static GLXContext	glc;
+static XEvent		xev;
+
+// X11 keysym -> the VK_* / ASCII codes the intro checks (only ESC matters here).
+void handleXevents()
+{
+	while (dpy && XCheckWindowEvent(dpy, win, KeyPressMask | KeyReleaseMask, &xev))
+	{
+		bool down = (xev.type == KeyPress);
+		if (xev.xkey.keycode == 9) Keys[VK_ESCAPE] = down;	// Escape
+	}
+}
+
+void Intro_CreateWindow(char* Title, DEVMODE mode, bool FullScreenFlag, HICON Icon, bool AonTop)
+{
+	XRes = mode.dmPelsWidth;
+	YRes = mode.dmPelsHeight;
+
+	dpy = XOpenDisplay(NULL);
+	if (!dpy) { fprintf(stderr, "cannot connect to X server\n"); exit(0); }
+
+	Window root = DefaultRootWindow(dpy);
+	GLint att[] = { GLX_RGBA, GLX_DOUBLEBUFFER, GLX_DEPTH_SIZE, 24,
+		GLX_RED_SIZE, 8, GLX_GREEN_SIZE, 8, GLX_BLUE_SIZE, 8, GLX_ALPHA_SIZE, 8, None };
+	XVisualInfo *vi = glXChooseVisual(dpy, 0, att);
+	if (!vi) { fprintf(stderr, "no appropriate GLX visual\n"); exit(0); }
+
+	Colormap cmap = XCreateColormap(dpy, root, vi->visual, AllocNone);
+	XSetWindowAttributes swa;
+	swa.colormap = cmap;
+	swa.event_mask = KeyPressMask | KeyReleaseMask | StructureNotifyMask;
+	win = XCreateWindow(dpy, root, 0, 0, XRes, YRes, 0, vi->depth, InputOutput,
+		vi->visual, CWColormap | CWEventMask, &swa);
+	XMapWindow(dpy, win);
+	XStoreName(dpy, win, Title);
+
+	glc = glXCreateContext(dpy, vi, NULL, GL_TRUE);
+	glXMakeCurrent(dpy, win, glc);
+
+	glEnable(GL_DEPTH_TEST);
+	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
+	glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
+	glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
+	glEnable(GL_ALPHA_TEST);
+	glAlphaFunc(GL_GEQUAL,0);
+	glEnable(GL_NORMALIZE);
+	glDepthFunc(GL_LEQUAL);
+	glColorMaterial(GL_FRONT_AND_BACK,GL_DIFFUSE);
+	glEnable(GL_COLOR_MATERIAL);
+	glEnable(GL_BLEND);
+	glHint(GL_LINE_SMOOTH_HINT,GL_NICEST);
+	glEnable(GL_LINE_SMOOTH);
+}
+
+void Intro_DestroyWindow(bool fullscreen)
+{
+	if (dpy) { glXMakeCurrent(dpy, None, NULL); XCloseDisplay(dpy); dpy = NULL; }
+}
+
+void SwitchTo2D()
+{
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	glViewport(0, 0, XRes, YRes);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluOrtho2D(0.0, XRes, YRes, 0.0);
+}
+
+void SwapBuffers(HDC hdc)
+{
+	glXSwapBuffers(dpy, win);
+}
+
+#else
+// ===================== original Win32 implementation =====================
 HDC			hDC=NULL;
 HGLRC		hRC=NULL;
 HWND		hWnd=NULL;
@@ -523,3 +619,4 @@ void WaitRightButtonRelease()
 }
 
 #endif
+#endif // CONSPIRACY_LINUX

@@ -2,9 +2,9 @@
 
 #include "Vectors.h"
 #include <windows.h>
-#include <gl\gl.h>
-#include <gl\glu.h>
-#include "Texgen.h"
+#include <GL/gl.h>
+#include <GL/glu.h>
+#include "TexGen.h"
 #include "includelist.h"
 #include "Splines.h"
 #include "ParticleEngine.h"

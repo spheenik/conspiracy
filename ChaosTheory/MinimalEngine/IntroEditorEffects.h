@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Texgen.h"
-#include "3dengine.h"
+#include "TexGen.h"
+#include "3DEngine.h"
 #include "WindowHandler.h"
 extern MATERIAL *MaterialList;
 

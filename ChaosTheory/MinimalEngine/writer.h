@@ -1,9 +1,9 @@
 #pragma once
 
 #include <windows.h>
-#include <gl/gl.h>
-#include <gl/glu.h>
-#include "IncludeList.h"
+#include <GL/gl.h>
+#include <GL/glu.h>
+#include "includelist.h"
 
 #define WRITER_STYLE_BOLD   0x00000001
 #define WRITER_STYLE_ITALIC 0x00000002

@@ -263,14 +263,19 @@ void PrecalcAnim(float t)
 		if (tme>precalcdelaytimer+100)
 		{
 			precalcdelaytimer=tme;
+#ifdef CONSPIRACY_LINUX
+			handleXevents();
+			{
+#else
 			MSG msg;
 			if (PeekMessage(&msg,NULL,0,0,PM_REMOVE))
 			{
 				TranslateMessage(&msg);
-				DispatchMessage(&msg); 
+				DispatchMessage(&msg);
 			}
 			else
 			{
+#endif
 					glClear(0x4100);
 
 					DisplayFrame((int)(t*1000),

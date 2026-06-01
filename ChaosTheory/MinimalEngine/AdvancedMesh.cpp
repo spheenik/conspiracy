@@ -2,7 +2,7 @@
 
 #include "AdvancedMesh.h"
 #include "includelist.h"
-#include "3dEngine.h"
+#include "3DEngine.h"
 
 void SelectPolyNeighbours(OBJECT *o, bool *Buffer, int *Level, int Poly, int Radius, int LevelNum)
 {
