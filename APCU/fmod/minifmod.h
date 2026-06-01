@@ -78,7 +78,7 @@ _EXTERN void			FSOUND_Close();
 _EXTERN FMUSIC_MODULE	* FMUSIC_LoadSong(SAMPLELOADCALLBACK sampleloadcallback, NOTELOADCALLBACK noteloadcallback);
 _EXTERN signed char	FMUSIC_FreeSong();
 _EXTERN signed char	FMUSIC_PlaySong(FMUSIC_MODULE	* mod);
-_EXTERN signed char	FMUSIC_StopSong();
+_EXTERN signed char	FMUSIC_StopSong(FMUSIC_MODULE	* mod);
 
 // Runtime song information.
 // =========================
