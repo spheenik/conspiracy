@@ -1,3 +1,6 @@
+#ifdef CONSPIRACY_LINUX
+#define GL_GLEXT_PROTOTYPES
+#endif
 #include "WindowHandler.h"
 //#include "windows.h"
 
@@ -6,6 +9,7 @@
 #include <X11/X.h>
 #include <X11/Xlib.h>
 #include <GL/glx.h>
+#include <GL/glext.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -24,13 +28,39 @@ static Window		win;
 static GLXContext	glc;
 static XEvent		xev;
 
+// The intro renders into an offscreen FBO at XRes x YRes, then SwapBuffers()
+// blits it into the real window preserving aspect (letterboxed) -- so it fills
+// a tiling-WM / oversized window correctly. (Same approach as ProjectGenesis.)
+static GLuint	g_fbo = 0, g_fboColor = 0, g_fboDepth = 0;
+static int		g_winw = 0, g_winh = 0;		// actual window size, tracked via ConfigureNotify
+
+static void cnsCreateFBO(int w, int h)
+{
+	glGenFramebuffers(1, &g_fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, g_fbo);
+	glGenRenderbuffers(1, &g_fboColor);
+	glBindRenderbuffer(GL_RENDERBUFFER, g_fboColor);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, w, h);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, g_fboColor);
+	glGenRenderbuffers(1, &g_fboDepth);
+	glBindRenderbuffer(GL_RENDERBUFFER, g_fboDepth);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, w, h);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, g_fboDepth);
+	// leave the FBO bound: all subsequent rendering targets it
+}
+
 // X11 keysym -> the VK_* / ASCII codes the intro checks (only ESC matters here).
 void handleXevents()
 {
-	while (dpy && XCheckWindowEvent(dpy, win, KeyPressMask | KeyReleaseMask, &xev))
+	while (dpy && XCheckWindowEvent(dpy, win, KeyPressMask | KeyReleaseMask | StructureNotifyMask, &xev))
 	{
-		bool down = (xev.type == KeyPress);
-		if (xev.xkey.keycode == 9) Keys[VK_ESCAPE] = down;	// Escape
+		if (xev.type == KeyPress || xev.type == KeyRelease) {
+			bool down = (xev.type == KeyPress);
+			if (xev.xkey.keycode == 9) Keys[VK_ESCAPE] = down;	// Escape
+		} else if (xev.type == ConfigureNotify) {
+			g_winw = xev.xconfigure.width;
+			g_winh = xev.xconfigure.height;
+		}
 	}
 }
 
@@ -59,6 +89,10 @@ void Intro_CreateWindow(char* Title, DEVMODE mode, bool FullScreenFlag, HICON Ic
 
 	glc = glXCreateContext(dpy, vi, NULL, GL_TRUE);
 	glXMakeCurrent(dpy, win, glc);
+
+	g_winw = XRes;
+	g_winh = YRes;					// seeded; corrected by ConfigureNotify once the WM sizes us
+	cnsCreateFBO(XRes, YRes);
 
 	glEnable(GL_DEPTH_TEST);
 	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
@@ -92,7 +126,29 @@ void SwitchTo2D()
 
 void SwapBuffers(HDC hdc)
 {
+	// Present the offscreen frame into the window, preserving the XRes:YRes
+	// aspect ratio (centered, black bars) regardless of the actual window size.
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, g_fbo);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
+	glViewport(0, 0, g_winw, g_winh);
+	glDisable(GL_SCISSOR_TEST);
+	glClearColor(0, 0, 0, 0);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	float sx = (float)g_winw / (float)XRes;
+	float sy = (float)g_winh / (float)YRes;
+	float scale = sx < sy ? sx : sy;
+	int vw = (int)(XRes * scale);
+	int vh = (int)(YRes * scale);
+	int ox = (g_winw - vw) / 2;
+	int oy = (g_winh - vh) / 2;
+
+	glBlitFramebuffer(0, 0, XRes, YRes, ox, oy, ox + vw, oy + vh, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+
 	glXSwapBuffers(dpy, win);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, g_fbo);	// back to offscreen for the next frame
 }
 
 #else
