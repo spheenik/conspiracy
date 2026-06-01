@@ -16,14 +16,15 @@ inline void Sleep(DWORD milliseconds) {
 }
 
 
-static long holdrand = 1L;
+static unsigned int next = 1;
 
 int rand(void)
 {
-    return(((holdrand = holdrand * 214013L + 2531011L) >> 16) & 0x7fff);
+    next = (next * 214013L + 2531011L);
+    return (next >> 16) & 0x7fff;
 }
 
 void srand(unsigned int seed)
 {
-    holdrand = (long) seed;
+    next = seed;
 }
