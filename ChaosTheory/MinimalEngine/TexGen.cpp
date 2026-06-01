@@ -1,6 +1,9 @@
 #include "TexGen.h"
 #include <string.h>
 #include <windows.h>	// re-assert min/max (defined outside its guard) after TexGen.h's <cmath>
+#ifdef CONSPIRACY_LINUX
+#include <cairo/cairo.h>
+#endif
 
 TEXTURE *TextureList=NULL;
 
@@ -247,9 +250,42 @@ char * fonts[]={
 };
 
 #ifdef CONSPIRACY_LINUX
+// Cairo replacement for the original Win32-GDI text rasterizer: render white
+// text on black at the logical resolution, then copy the intensity into Layer
+// (grayscale, replicated to all channels) at the same offset/wrap as the GDI path.
 void TEXTURE::Text(RGBA* Layer, COMMAND* Parameters) {
-	// Win32 GDI font rendering not ported yet; produce an empty (black) layer.
+	TEXTTEMPLATE * t = (TEXTTEMPLATE*)Parameters->data;
 	memset(Layer, 0, XRes*YRes*sizeof(RGBA));
+	if (!t->Text) return;
+
+	cairo_surface_t *surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, XRes, YRes);
+	cairo_t *cr = cairo_create(surf);
+	cairo_set_source_rgb(cr, 0, 0, 0);
+	cairo_paint(cr);
+
+	cairo_select_font_face(cr, fonts[t->Font],
+		t->Italic ? CAIRO_FONT_SLANT_ITALIC : CAIRO_FONT_SLANT_NORMAL,
+		t->Bold   ? CAIRO_FONT_WEIGHT_BOLD   : CAIRO_FONT_WEIGHT_NORMAL);
+	cairo_set_font_size(cr, (double)((t->Size * XRes) >> 8));
+	cairo_set_source_rgb(cr, 1, 1, 1);
+
+	cairo_font_extents_t fe;
+	cairo_font_extents(cr, &fe);
+	cairo_move_to(cr, 0, fe.ascent);				// TextOut draws from the top-left corner
+	cairo_show_text(cr, t->Text);					// whole string in one call -> proper shaping/kerning
+	cairo_surface_flush(surf);						// (t->Spacing is not applied; matches the PG text path)
+
+	unsigned char *data = cairo_image_surface_get_data(surf);
+	int stride = cairo_image_surface_get_stride(surf);
+	int ox = SCALEX(t->X), oy = SCALEX(t->Y);
+	for (int zy = 0; zy < YRes; zy++)
+		for (int zx = 0; zx < XRes; zx++) {
+			unsigned char i = data[zy*stride + zx*4];	// white-on-black: any channel = intensity
+			Layer[WRAPX(zx+ox) + WRAPY(zy+oy)*XRes].dw = i * 0x01010101;
+		}
+
+	cairo_destroy(cr);
+	cairo_surface_destroy(surf);
 }
 #else
 void TEXTURE::Text(RGBA* Layer, COMMAND* Parameters) {

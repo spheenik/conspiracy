@@ -19,9 +19,9 @@ set(SOURCE_FILES
         )
 
 add_executable(chaos-theory ${SOURCE_FILES})
-target_include_directories(chaos-theory PUBLIC ../port/include MinimalEngine ChaosTheory)
+target_include_directories(chaos-theory PUBLIC ../port/include MinimalEngine ChaosTheory /usr/include/cairo)
 target_compile_definitions(chaos-theory PUBLIC CONSPIRACY_LINUX)
 set_target_properties(chaos-theory PROPERTIES
         COMPILE_FLAGS "-m32 -fpermissive -fno-operator-names -w"
         LINK_FLAGS "-m32 -no-pie")
-target_link_libraries(chaos-theory X11 GL GLU pulse pulse-simple pthread)
+target_link_libraries(chaos-theory X11 GL GLU pulse pulse-simple pthread cairo)
