@@ -32,6 +32,8 @@ int	 (*FSOUND_File_Read)(void *buffer, int size);
 void (*FSOUND_File_Seek)(int pos, signed char mode);
 int	 (*FSOUND_File_Tell)();
 
+unsigned int FMUSIC_SeekMs = 0;		// fast-forward target for the next FMUSIC_PlaySong(), in ms
+
 //= PRIVATE FUNCTIONS ==============================================================================
 
 
@@ -167,7 +169,22 @@ signed char FMUSIC_PlaySong(FMUSIC_MODULE	* mod)
 	FSOUND_MixBuffer = (signed char *)(((unsigned int)FSOUND_MixBufferMem + 15) & 0xFFFFFFF0);
 
 	// ========================================================================================================
-	// PREFILL THE MIXER BUFFER 
+	// FAST-FORWARD TO SEEK POSITION
+	// minifmod has no seek, so advance by running the real mixer fill loop (which updates the song
+	// state and time_ms exactly as playback does) and discarding the mixed audio. Using the mixer's
+	// own accounting keeps song position and time_ms in lockstep -- a hand-rolled per-tick time
+	// estimate drifts ~1ms per mix block, which compounds to seconds over a full song.
+	// ========================================================================================================
+
+	if (FMUSIC_SeekMs)
+	{
+		while (mod->time_ms < (int)FMUSIC_SeekMs)
+			FSOUND_Software_Fill();
+		FMUSIC_SeekMs = 0;
+	}
+
+	// ========================================================================================================
+	// PREFILL THE MIXER BUFFER
 	// ========================================================================================================
 
 	FSOUND_Software_FillBlock = 0;

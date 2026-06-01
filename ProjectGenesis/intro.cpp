@@ -27,6 +27,7 @@
 
 int time,lasttime;
 int starttime;
+int jumpoffset=0;	// ms to fast-forward the timeline to (e.g. 422130 = flag scene); 0 = normal start
 camera perspcam;
 
 void swap()
@@ -243,7 +244,7 @@ void mainloop()
 		{
 			if (setupcfg.music)
 			time=(cnsSynth_GetSync()+57);
-			else time=(timeGetTime()-StartTime);
+			else time=(timeGetTime()-StartTime)+jumpoffset;
 			{
 				glClear(0x4100);
 				glLoadIdentity();
@@ -266,8 +267,10 @@ void mainloop()
 
 #ifdef CONSPIRACY_LINUX
 int main(int argc, char *argv[]) {
+    if (argc > 1) jumpoffset = atoi(argv[1]);	// e.g. ./project-genesis 422130 jumps to the flag scene
     if (OpenSetupDialog(NULL))
     {
+        if (jumpoffset > 0 && setupcfg.music) cnsSynth_SeekMusic(jumpoffset);	// fast-forward the song to the jump point
         Init();
         mainloop();
         KillGLWindow();

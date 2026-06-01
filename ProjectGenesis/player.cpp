@@ -78,3 +78,4 @@ int cnsSynth_LoadMusic() {
 
 void cnsSynth_PlayMusic() {	FMUSIC_PlaySong(mod); }
 int cnsSynth_GetSync() { return FMUSIC_GetTime(); }
+void cnsSynth_SeekMusic(int ms) { FMUSIC_SeekMs = ms; }	// fast-forward on next PlayMusic()

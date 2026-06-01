@@ -11,5 +11,6 @@ extern ZAJCALLBACK cnsSynth_LoaderCallback;
 int cnsSynth_LoadMusic();
 void cnsSynth_PlayMusic();
 int cnsSynth_GetSync();
+void cnsSynth_SeekMusic(int ms);
 
 #endif

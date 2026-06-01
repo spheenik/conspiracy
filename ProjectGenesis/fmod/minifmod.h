@@ -85,7 +85,11 @@ _EXTERN signed char	FMUSIC_StopSong(FMUSIC_MODULE	* mod);
 _EXTERN int				FMUSIC_GetOrder();
 _EXTERN int				FMUSIC_GetRow();
 _EXTERN unsigned int	FMUSIC_GetTime();
-  
+
+// If non-zero when FMUSIC_PlaySong() is called, the song state is silently
+// advanced to this position (ms) before playback starts. Reset to 0 on use.
+_EXTERN unsigned int	FMUSIC_SeekMs;
+
 #undef _EXTERN
 
 #endif
