@@ -24,4 +24,4 @@ target_compile_definitions(chaos-theory PUBLIC CONSPIRACY_LINUX)
 set_target_properties(chaos-theory PROPERTIES
         COMPILE_FLAGS "-m32 -fpermissive -fno-operator-names -w"
         LINK_FLAGS "-m32 -no-pie")
-target_link_libraries(chaos-theory X11 GL GLU pulse pulse-simple pthread cairo)
+target_link_libraries(chaos-theory X11 GL GLU pulse pulse-simple pthread cairo jpeg)

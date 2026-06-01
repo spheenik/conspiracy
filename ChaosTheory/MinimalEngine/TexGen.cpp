@@ -3,6 +3,11 @@
 #include <windows.h>	// re-assert min/max (defined outside its guard) after TexGen.h's <cmath>
 #ifdef CONSPIRACY_LINUX
 #include <cairo/cairo.h>
+#include <setjmp.h>
+#include <stdio.h>		// jpeglib.h references FILE
+extern "C" {
+#include <jpeglib.h>
+}
 #endif
 
 TEXTURE *TextureList=NULL;
@@ -1372,11 +1377,49 @@ void TEXTURE::Dots(RGBA* Layer, COMMAND* Parameters) {
 }*/
 
 #ifdef CONSPIRACY_LINUX
-// Phase 1: the original JPEG loader uses Win32 OLE (OleLoadPictureEx). Stub to a
-// blank texture for now; a libjpeg-based decode can replace this later.
+// libjpeg replacement for the original Win32 OLE (OleLoadPictureEx) loader:
+// decode the in-memory JPEG and nearest-neighbour scale it to fill the layer.
+struct jpeg_err_jmp { struct jpeg_error_mgr mgr; jmp_buf jb; };
+static void jpeg_err_longjmp(j_common_ptr c) { longjmp(((jpeg_err_jmp*)c->err)->jb, 1); }
+
 void TEXTURE::Jpeg(RGBA* Layer, COMMAND* Parameters)
 {
+	JPEGTEMPLATE * r = (JPEGTEMPLATE*)Parameters->data;
 	memset(Layer, 0, XRes*YRes*4);
+	if (!r->JPEGData || r->JPEGDataSize <= 0) return;
+
+	struct jpeg_decompress_struct cinfo;
+	jpeg_err_jmp jerr;
+	cinfo.err = jpeg_std_error(&jerr.mgr);
+	jerr.mgr.error_exit = jpeg_err_longjmp;		// don't exit() on a bad JPEG
+	unsigned char *img = 0;
+	if (setjmp(jerr.jb)) { jpeg_destroy_decompress(&cinfo); delete[] img; return; }
+
+	jpeg_create_decompress(&cinfo);
+	jpeg_mem_src(&cinfo, r->JPEGData, r->JPEGDataSize);
+	jpeg_read_header(&cinfo, TRUE);
+	cinfo.out_color_space = JCS_RGB;
+	jpeg_start_decompress(&cinfo);
+
+	int w = cinfo.output_width, h = cinfo.output_height;
+	img = new unsigned char[(size_t)w * h * 3];
+	while ((int)cinfo.output_scanline < h) {
+		unsigned char *row = img + (size_t)cinfo.output_scanline * w * 3;
+		jpeg_read_scanlines(&cinfo, &row, 1);
+	}
+	jpeg_finish_decompress(&cinfo);
+	jpeg_destroy_decompress(&cinfo);
+
+	for (int y = 0; y < YRes; y++) {				// stretch to fill XRes x YRes
+		int sy = y * h / YRes; if (sy >= h) sy = h-1;
+		for (int x = 0; x < XRes; x++) {
+			int sx = x * w / XRes; if (sx >= w) sx = w-1;
+			unsigned char *px = img + ((size_t)sy * w + sx) * 3;
+			RGBA *d = &Layer[y*XRes + x];
+			d->r = px[0]; d->g = px[1]; d->b = px[2]; d->a = 255;
+		}
+	}
+	delete[] img;
 }
 #else
 void TEXTURE::Jpeg(RGBA* Layer, COMMAND* Parameters)
