@@ -12,7 +12,8 @@ clothpoint cloth[15][10];
 
 vector3 Gravity;
 vector3 wind;
-int xrez=14,yrez=9,mod=8;
+int xrez=14,yrez=9;
+static int pinmod=8;	// every pinmod-th point on the trailing edge is fixed to the flagpole
 
 void initcloth()
 {
@@ -85,7 +86,7 @@ void calculatecloth()
 		for (int y=0; y<yrez; y++)
 		{
 			memset(&cloth[x][y].normal,0,sizeof(vector3));
-			if (!(x==xrez-1 && y%mod==0))
+			if (!(x==xrez-1 && y%pinmod==0))
 			{
 				cloth[x][y].force=Gravity;
 				cloth[x][y].force=v3_add(cloth[x][y].force,v3_mults(cloth[x][y].speed,-0.002f));
@@ -116,7 +117,7 @@ void calculatecloth()
 	for (x=0; x<xrez; x++)
 		for (int y=0; y<yrez; y++)
 		{
-			if (!(x==xrez-1 && y%mod==0))
+			if (!(x==xrez-1 && y%pinmod==0))
 			cloth[x][y].speed=v3_add(cloth[x][y].speed,cloth[x][y].force);
 			else
 				memset(&cloth[x][y].speed,0,sizeof(vector3));

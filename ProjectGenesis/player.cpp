@@ -62,7 +62,7 @@ void memseek(int pos, signed char mode)
 
 int memtell() { return music_pos; }
 
-extern "C" FMUSIC_MODULE	* mod;
+static FMUSIC_MODULE	* mod = 0;	// file-local: must not be a global symbol (collided with cloth.cpp's pin modulo 'mod')
 int cnsSynth_LoadMusic() {
 #ifdef __DELTA
 	delta_decode(music_data,MUSICSIZE);
