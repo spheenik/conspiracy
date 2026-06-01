@@ -11,7 +11,7 @@ int OpenSetupDialog(HINSTANCE hInstance)
 	setupcfg.mode.dmPelsHeight = 720;		// 16:9, matches the intro's internal letterbox
 	setupcfg.mode.dmBitsPerPel = 32;
 	setupcfg.fullscreen  = 0;
-	setupcfg.music       = 0;				// phase 1: silent (mvx synth not ported yet)
+	setupcfg.music       = 1;				// phase 2: mvx synth audio (linux_mvx_audio.cpp)
 	setupcfg.vsync       = 1;
 	setupcfg.alwaysontop = 0;
 	setupcfg.AspectRatio = 16/9.0f;

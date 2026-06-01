@@ -1,0 +1,11 @@
+/* music.mvm embedded as `music` / `music_size` (path filled in by CMake configure_file). */
+	.section .rodata
+	.global music
+music:
+	.incbin "@CT_MUSIC_MVM@"
+music_end:
+	.section .data
+	.global music_size
+music_size:
+	.int music_end - music
+	.section .note.GNU-stack,"",@progbits

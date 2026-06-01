@@ -45,7 +45,7 @@ extern "C" int x##_size;
 BINARY_DECLARE(music);
 
 #if defined(CONSPIRACY_LINUX)
-// Phase 1: no audio backend (music forced off, wall-clock timing).
+#include "mvx_lite.h"
 #elif defined(RELEASETYPE_DEMO)
 #pragma comment(lib,"bass.lib")
 #include "bass.h"
@@ -76,7 +76,7 @@ void PrecalcIntro()
 	if (setupcfg.music)
 	{
 #if defined(CONSPIRACY_LINUX)
-		// phase 1: silent
+		if (!mvxSystem_Init(hWnd,music,music_size)) exit(0);
 #elif defined(RELEASETYPE_DEMO)
 		if (!BASS_Init(1,44100,0,hWnd,NULL)) exit(0);
 		str=BASS_StreamCreateFile(true,music,0,music_size,0);
@@ -100,7 +100,7 @@ void PlayIntro()
 	if (setupcfg.music)
 	{
 #if defined(CONSPIRACY_LINUX)
-		// phase 1: silent
+		mvxSystem_Play();
 #elif defined(RELEASETYPE_DEMO)
 		BASS_StreamPlay(str,FALSE,0);
 #else
@@ -131,7 +131,8 @@ void PlayIntro()
 			glClear(0x4100);
 
 #if defined(CONSPIRACY_LINUX)
-			Time=(int)((timeGetTime()-StartTime)/10);
+			if (setupcfg.music) Time=(int)(mvxSystem_GetSync()/10.0f);
+			else                Time=(int)((timeGetTime()-StartTime)/10);
 #elif defined(RELEASETYPE_DEMO)
 			if (setupcfg.music) Time=(int)(BASS_ChannelBytes2Seconds(str,BASS_ChannelGetPosition(str))*100.0f);
 			else                Time=(int)((timeGetTime()-StartTime)/10);
@@ -191,7 +192,8 @@ INT WINAPI WinMain( HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, I
 		if (setupcfg.music)
 		{
 #if defined(CONSPIRACY_LINUX)
-			// phase 1: silent
+			mvxSystem_Stop();
+			mvxSystem_DeInit();
 #elif defined(RELEASETYPE_DEMO)
 			BASS_ChannelStop(str);
 			BASS_StreamFree(str);

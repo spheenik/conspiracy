@@ -19,14 +19,19 @@
 #include <stdio.h>
 #include <math.h>
 #include <windows.h>
+#ifndef CONSPIRACY_LINUX
 #include <dsound.h>
 #pragma comment(lib,"dsound.lib")
+#endif
 
 extern int mvxSystem_SongLength; // in ticks
 extern int mvxSystem_SamplesPerTick;
 
 #define stereofloat float
 
+#ifdef CONSPIRACY_LINUX
+extern "C" {
+#endif
 // MIXING ROUTINES
 void mvxMixer_Init();
 void mvxMixer_Render(stereofloat *,int);
@@ -39,3 +44,6 @@ void mvxSystem_Play();
 int mvxSystem_GetSync();
 void mvxSystem_Stop();
 void mvxSystem_DeInit();
+#ifdef CONSPIRACY_LINUX
+}
+#endif
