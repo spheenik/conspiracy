@@ -1,7 +1,8 @@
 #ifdef CONSPIRACY_LINUX
-#include <cairo/cairo.h>
-#include <pango/pangocairo.h>
 #include <stdio.h>
+#include <string.h>
+#define STB_TRUETYPE_IMPLEMENTATION
+#include "stb_text.h"		// includes stb_truetype.h (impl) once
 #endif
 #include "TexGen.h"
 
@@ -723,63 +724,26 @@ void text(texture &t, texturecommand incmnd)
 
 #ifdef CONSPIRACY_LINUX
 
-    cairo_surface_t *surface;
-    cairo_t *cr;
-
-    surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 256, 256);
-    cr = cairo_create(surface);
-
-    cairo_rectangle(cr, 0, 0, 256, 256);
-    cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
-    cairo_fill(cr);
-
-    cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
-
-    // Render with Pango rather than cairo's "toy" font API: Pango synthesizes an
-    // oblique for fonts that have no real italic face (e.g. Tahoma), matching the
-    // original GDI behaviour, and draws from the top-left like Win32 TextOut.
-    PangoLayout *layout = pango_cairo_create_layout(cr);
-    PangoFontDescription *desc = pango_font_description_new();
-    pango_font_description_set_family(desc, fonts[incmnd.command[2]]);
-    pango_font_description_set_absolute_size(desc, (double)(incmnd.command[3] * 0.83) * PANGO_SCALE);
-    pango_font_description_set_style(desc, incmnd.command[6] ? PANGO_STYLE_ITALIC : PANGO_STYLE_NORMAL);
-    pango_font_description_set_weight(desc, incmnd.command[7] ? PANGO_WEIGHT_BOLD : PANGO_WEIGHT_NORMAL);
-    pango_layout_set_font_description(layout, desc);
-    pango_font_description_free(desc);
-
-    pango_layout_set_text(layout, s, -1);
-    cairo_move_to(cr, incmnd.command[4], incmnd.command[5]);		// TextOut draws from the top-left
-    pango_cairo_show_layout(cr, layout);
-    g_object_unref(layout);
-    cairo_surface_flush(surface);				// commit the drawing before reading pixels
-
-    rgba *buf = (rgba *) cairo_image_surface_get_data(surface);
-
-#if 0
-    printf("text generation: pos:%u/%u, italic: %u, bold: %u, size: %u, font: %s, text: %s\n",
-           incmnd.command[4], incmnd.command[5],
-           incmnd.command[6],
-           incmnd.command[7],
-           incmnd.command[3],
-           fonts[incmnd.command[2]],
-           s
-    );
-#endif
+    // Rasterise with stb_truetype from an embedded, subsetted font (no cairo/pango,
+    // no system fonts). Pen at (command[4],command[5]) top-left like Win32 TextOut;
+    // em = cell*0.83. Italic for faces without a real italic is synthesized (shear),
+    // exactly as GDI did. The intensity buffer feeds the original transpose/blend.
+    static unsigned char gray[256*256];
+    memset(gray, 0, sizeof(gray));
+    stbtext_render(gray, 256, 256, fonts[incmnd.command[2]], incmnd.command[7], incmnd.command[6],
+                   incmnd.command[3] * 0.83, 0, incmnd.command[4], incmnd.command[5], s);
 
     #define min( a, b ) ( ( a < b) ? a : b )
 
     for (zx=0;zx<256;zx++)
         for (zy=0;zy<256;zy++)
         {
-            ss=buf[256*zx+zy];
-            t.layers[incmnd.layer][zy][zx].r=(byte)(min(ss.r+t.layers[incmnd.layer][zy][zx].r,255.0));
-            t.layers[incmnd.layer][zy][zx].g=(byte)(min(ss.g+t.layers[incmnd.layer][zy][zx].g,255.0));
-            t.layers[incmnd.layer][zy][zx].b=(byte)(min(ss.b+t.layers[incmnd.layer][zy][zx].b,255.0));
+            unsigned char v = gray[256*zx+zy];
+            t.layers[incmnd.layer][zy][zx].r=(byte)(min(v+t.layers[incmnd.layer][zy][zx].r,255.0));
+            t.layers[incmnd.layer][zy][zx].g=(byte)(min(v+t.layers[incmnd.layer][zy][zx].g,255.0));
+            t.layers[incmnd.layer][zy][zx].b=(byte)(min(v+t.layers[incmnd.layer][zy][zx].b,255.0));
         }
     #undef min
-
-    cairo_destroy(cr);
-    cairo_surface_destroy(surface);				// free only after the pixels are read
 
 #else
 

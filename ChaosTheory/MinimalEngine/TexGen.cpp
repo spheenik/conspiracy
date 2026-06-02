@@ -2,12 +2,12 @@
 #include <string.h>
 #include <windows.h>	// re-assert min/max (defined outside its guard) after TexGen.h's <cmath>
 #ifdef CONSPIRACY_LINUX
-#include <cairo/cairo.h>
-#include <pango/pangocairo.h>
 #include <stdio.h>		// jpeglib.h references FILE
-extern "C" {
-#include <gdk-pixbuf/gdk-pixbuf.h>
-}
+#include <stdlib.h>
+#define STB_TRUETYPE_IMPLEMENTATION
+#include "stb_text.h"		// includes stb_truetype.h (impl) once
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 #endif
 
 TEXTURE *TextureList=NULL;
@@ -263,47 +263,22 @@ void TEXTURE::Text(RGBA* Layer, COMMAND* Parameters) {
 	memset(Layer, 0, XRes*YRes*sizeof(RGBA));
 	if (!t->Text) return;
 
-	cairo_surface_t *surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, XRes, YRes);
-	cairo_t *cr = cairo_create(surf);
-	cairo_set_source_rgb(cr, 0, 0, 0);
-	cairo_paint(cr);
+	// Rasterise with stb_truetype from an embedded, subsetted font -- no cairo/
+	// pango, no system fonts. GDI CreateFont takes a cell height; the em is 0.83
+	// of it for the MS fonts. Spacing reproduces SetTextCharacterExtra.
+	unsigned char *gray = (unsigned char*)calloc(XRes*YRes, 1);
+	double em = (double)((t->Size * XRes) >> 8) * 0.83;
+	stbtext_render(gray, XRes, YRes, fonts[t->Font], t->Bold, t->Italic,
+	               em, SCALEX(t->Spacing), 0, 0, t->Text);
 
-	// Lay out with Pango so the GDI per-character spacing (SetTextCharacterExtra) is
-	// reproduced via letter-spacing -- the cairo "toy" text API has no equivalent.
-	PangoLayout* layout = pango_cairo_create_layout(cr);
-	PangoFontDescription* desc = pango_font_description_new();
-	pango_font_description_set_family(desc, fonts[t->Font]);
-	// GDI CreateFont takes a cell height; cairo/Pango want the em size. 0.83 converts
-	// between them for the MS fonts (matches the ProjectGenesis text path).
-	pango_font_description_set_absolute_size(desc, (double)((t->Size * XRes) >> 8) * 0.83 * PANGO_SCALE);
-	pango_font_description_set_style(desc, t->Italic ? PANGO_STYLE_ITALIC : PANGO_STYLE_NORMAL);
-	pango_font_description_set_weight(desc, t->Bold ? PANGO_WEIGHT_BOLD : PANGO_WEIGHT_NORMAL);
-	pango_layout_set_font_description(layout, desc);
-	pango_font_description_free(desc);
-
-	PangoAttrList* attrs = pango_attr_list_new();			// SetTextCharacterExtra(SCALEX(Spacing))
-	pango_attr_list_insert(attrs, pango_attr_letter_spacing_new(SCALEX(t->Spacing) * PANGO_SCALE));
-	pango_layout_set_attributes(layout, attrs);
-	pango_attr_list_unref(attrs);
-
-	pango_layout_set_text(layout, t->Text, -1);
-	cairo_set_source_rgb(cr, 1, 1, 1);
-	cairo_move_to(cr, 0, 0);						// TextOut draws from the top-left corner
-	pango_cairo_show_layout(cr, layout);
-	g_object_unref(layout);
-	cairo_surface_flush(surf);
-
-	unsigned char *data = cairo_image_surface_get_data(surf);
-	int stride = cairo_image_surface_get_stride(surf);
 	int ox = SCALEX(t->X), oy = SCALEX(t->Y);
 	for (int zy = 0; zy < YRes; zy++)
 		for (int zx = 0; zx < XRes; zx++) {
-			unsigned char i = data[zy*stride + zx*4];	// white-on-black: any channel = intensity
+			unsigned char i = gray[zy*XRes + zx];		// white-on-black intensity
 			Layer[WRAPX(zx+ox) + WRAPY(zy+oy)*XRes].dw = i * 0x01010101;
 		}
 
-	cairo_destroy(cr);
-	cairo_surface_destroy(surf);
+	free(gray);
 }
 #else
 void TEXTURE::Text(RGBA* Layer, COMMAND* Parameters) {
@@ -1390,29 +1365,18 @@ void TEXTURE::Dots(RGBA* Layer, COMMAND* Parameters) {
 }*/
 
 #ifdef CONSPIRACY_LINUX
-// Image loader: replaces the original Win32 OleLoadPictureEx with gdk-pixbuf, which
-// decodes any format it has a loader for (GIF/JPEG/PNG/BMP/...) through one API -- so we
-// don't need a separate library per format. Returns RGB (new unsigned char[w*h*3]) or 0.
+// Image loader: replaces the original Win32 OleLoadPictureEx with stb_image, a
+// single-header zero-dependency decoder. The embedded payloads are GIF89a (the
+// filter is misleadingly named "Jpeg"); stb_image also handles JPEG/PNG/BMP/TGA.
+// Returns RGB (new unsigned char[w*h*3]) or 0.
 static unsigned char* ct_decode_image(const unsigned char* data, int n, int* ow, int* oh) {
-	GdkPixbufLoader* loader = gdk_pixbuf_loader_new();
-	unsigned char* rgb = 0;
-	if (gdk_pixbuf_loader_write(loader, data, n, 0) && gdk_pixbuf_loader_close(loader, 0)) {
-		GdkPixbuf* pix = gdk_pixbuf_loader_get_pixbuf(loader);	// owned by the loader
-		if (pix) {
-			int w = gdk_pixbuf_get_width(pix), h = gdk_pixbuf_get_height(pix);
-			int ch = gdk_pixbuf_get_n_channels(pix), stride = gdk_pixbuf_get_rowstride(pix);
-			const guchar* px = gdk_pixbuf_get_pixels(pix);
-			rgb = new unsigned char[(size_t)w * h * 3];
-			for (int y = 0; y < h; y++)
-				for (int x = 0; x < w; x++) {
-					const guchar* s = px + (size_t)y*stride + (size_t)x*ch;
-					unsigned char* o = rgb + ((size_t)y*w + x)*3;
-					o[0] = s[0]; o[1] = s[1]; o[2] = s[2];			// gdk-pixbuf is R,G,B[,A]
-				}
-			*ow = w; *oh = h;
-		}
-	}
-	g_object_unref(loader);		// frees the pixbuf too
+	int w = 0, h = 0, ch = 0;
+	unsigned char* px = stbi_load_from_memory(data, n, &w, &h, &ch, 3);	// force RGB
+	if (!px) return 0;
+	unsigned char* rgb = new unsigned char[(size_t)w * h * 3];
+	memcpy(rgb, px, (size_t)w * h * 3);
+	stbi_image_free(px);
+	*ow = w; *oh = h;
 	return rgb;
 }
 
