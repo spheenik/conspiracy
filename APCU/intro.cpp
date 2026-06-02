@@ -190,24 +190,8 @@ void mainloop() {
                 glLoadIdentity();
 
                 displayframe(time);
-                //0,45,32 es 0,22,63
-
-                glPushAttrib(GL_ALL_ATTRIB_BITS);
-                glColor4f(0, linear(45.0f / 255.0f, 22.0f / 255.0f,
-                                    (float) time / 271790.0f),
-                          linear(32.0f / 255.0f, 63.0f / 255.0f,
-                                 (float) time / 271790.0f), 0);
-                glDisable(GL_TEXTURE_2D);
-                glDisable(GL_LIGHTING);
-                glDisable(GL_BLEND);
-                glDisable(GL_DEPTH_TEST);
-                glBegin(GL_LINES);
-                glVertex2i(0, 75);
-                glVertex2i(800, 75);
-                glVertex2i(0, 525);
-                glVertex2i(800, 525);
-                glEnd();
-                glPopAttrib();
+                // (Removed leftover dev guide-lines at y=75/525 that the released
+                // source drew here but the final demo binary did not.)
 
                 //Sleep(10);
 
