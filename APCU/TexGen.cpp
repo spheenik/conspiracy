@@ -1,5 +1,6 @@
 #ifdef CONSPIRACY_LINUX
 #include <cairo/cairo.h>
+#include <pango/pangocairo.h>
 #include <stdio.h>
 #endif
 #include "TexGen.h"
@@ -723,7 +724,6 @@ void text(texture &t, texturecommand incmnd)
 #ifdef CONSPIRACY_LINUX
 
     cairo_surface_t *surface;
-    cairo_font_extents_t extents;
     cairo_t *cr;
 
     surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 256, 256);
@@ -735,21 +735,22 @@ void text(texture &t, texturecommand incmnd)
 
     cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
 
+    // Render with Pango rather than cairo's "toy" font API: Pango synthesizes an
+    // oblique for fonts that have no real italic face (e.g. Tahoma), matching the
+    // original GDI behaviour, and draws from the top-left like Win32 TextOut.
+    PangoLayout *layout = pango_cairo_create_layout(cr);
+    PangoFontDescription *desc = pango_font_description_new();
+    pango_font_description_set_family(desc, fonts[incmnd.command[2]]);
+    pango_font_description_set_absolute_size(desc, (double)(incmnd.command[3] * 0.83) * PANGO_SCALE);
+    pango_font_description_set_style(desc, incmnd.command[6] ? PANGO_STYLE_ITALIC : PANGO_STYLE_NORMAL);
+    pango_font_description_set_weight(desc, incmnd.command[7] ? PANGO_WEIGHT_BOLD : PANGO_WEIGHT_NORMAL);
+    pango_layout_set_font_description(layout, desc);
+    pango_font_description_free(desc);
 
-    cairo_select_font_face(
-            cr,
-            fonts[incmnd.command[2]],
-            incmnd.command[6] ? CAIRO_FONT_SLANT_ITALIC : CAIRO_FONT_SLANT_NORMAL,
-            incmnd.command[7] ? CAIRO_FONT_WEIGHT_BOLD : CAIRO_FONT_WEIGHT_NORMAL
-    );
-
-    int size = incmnd.command[3] *0.83;
-
-    cairo_set_font_size(cr, size);
-    cairo_font_extents(cr, &extents);
-
-    cairo_move_to(cr, incmnd.command[4], incmnd.command[5] + extents.height - extents.descent);
-    cairo_show_text(cr, s);
+    pango_layout_set_text(layout, s, -1);
+    cairo_move_to(cr, incmnd.command[4], incmnd.command[5]);		// TextOut draws from the top-left
+    pango_cairo_show_layout(cr, layout);
+    g_object_unref(layout);
     cairo_surface_flush(surface);				// commit the drawing before reading pixels
 
     rgba *buf = (rgba *) cairo_image_surface_get_data(surface);

@@ -28,7 +28,7 @@ set(SOURCE_FILES
 
 set_source_files_properties(fmod/mixer_fpu_ramp.asm PROPERTIES LANGUAGE ASM_NASM)
 add_executable(apcu ${SOURCE_FILES})
-target_include_directories(apcu PUBLIC ../port/include)
+target_include_directories(apcu PUBLIC ../port/include /usr/include/cairo /usr/include/pango-1.0 /usr/include/glib-2.0 /usr/lib32/glib-2.0/include /usr/include/harfbuzz)
 target_compile_definitions(apcu PUBLIC CONSPIRACY_LINUX)
 set_target_properties(apcu PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32 -no-pie")
-target_link_libraries(apcu X11 GL GLU cairo pulse pthread)
+target_link_libraries(apcu X11 GL GLU cairo pulse pthread pangocairo-1.0 pango-1.0 gobject-2.0 glib-2.0)
