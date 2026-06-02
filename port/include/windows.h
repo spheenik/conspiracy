@@ -8,6 +8,15 @@
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 #endif
 
+// rand() (port/windows.c) reproduces MSVC's LCG, which returns 0..0x7fff. The matching
+// RAND_MAX must be MSVC's value, not glibc's 2^31 -- otherwise every `rand()/RAND_MAX` in
+// the engine (camera shake, starfields, particle scatter, texture noise, ...) collapses to
+// ~0. Re-assert it outside the include guard (like min/max) so an intervening <stdlib.h>
+// can't restore the wrong value at the use site.
+#include <stdlib.h>
+#undef RAND_MAX
+#define RAND_MAX 0x7fff
+
 #ifndef CONSPIRACY_WINDOWS_H
 #define CONSPIRACY_WINDOWS_H
 

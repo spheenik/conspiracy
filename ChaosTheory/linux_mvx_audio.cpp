@@ -21,6 +21,7 @@
 #include <time.h>
 #include <pulse/simple.h>
 #include <pulse/error.h>
+#include <gsm/gsm.h>
 
 #define STDCALL __attribute__((stdcall))
 
@@ -58,17 +59,44 @@ int    shim_vsprintf(char* s, const char* fmt, va_list ap) { return vsprintf(s, 
 int    shim_rand()           { return rand(); }    // MSVC LCG (port/windows.c)
 void   shim_srand(unsigned s){ srand(s); }
 
-// ---- ACM stubs (always fail; the song's instruments are oscillator-based) ----
+// ---- ACM -> GSM 6.10 decode ----
+// The song's drum/bass instruments are WAVE_FORMAT_GSM610 (tag 0x31, 8kHz mono, WAV49
+// 65-byte blocks). mvxPlugSampler::Uncompress decodes them through the Windows ACM API;
+// we decode with libgsm and fake the ACM driver model (Uncompress only needs the stream
+// Open/Convert/Close path and never validates the driver handles). ACMSTREAMHEADER field
+// offsets are the stable ACM ABI: pbSrc@12 cbSrcLength@16 cbSrcLengthUsed@20 pbDst@28
+// cbDstLength@32 cbDstLengthUsed@36. All functions return MMSYSERR_NOERROR (0).
 extern "C" {
-long STDCALL mvx_acmDriverClose(void*, unsigned){ return 1; }
-long STDCALL mvx_acmDriverEnum(void*, unsigned long, unsigned long){ return 1; }
-long STDCALL mvx_acmDriverOpen(void*, void*, unsigned long){ return 1; }
-long STDCALL mvx_acmFormatEnumA(void*, void*, void*, unsigned long, unsigned long){ return 1; }
-long STDCALL mvx_acmMetrics(void*, unsigned, void*){ return 1; }
-long STDCALL mvx_acmStreamClose(void*, unsigned long){ return 1; }
-long STDCALL mvx_acmStreamConvert(void*, void*, unsigned long){ return 1; }
-long STDCALL mvx_acmStreamOpen(void*, void*, void*, void*, void*, unsigned long, unsigned long, unsigned long){ return 1; }
-long STDCALL mvx_acmStreamPrepareHeader(void*, void*, unsigned long){ return 1; }
+long STDCALL mvx_acmDriverClose(void*, unsigned){ return 0; }
+long STDCALL mvx_acmDriverEnum(void*, unsigned long, unsigned long){ return 0; }
+long STDCALL mvx_acmDriverOpen(void* phad, void*, unsigned long){ if(phad)*(void**)phad=(void*)1; return 0; }
+long STDCALL mvx_acmFormatEnumA(void*, void*, void*, unsigned long, unsigned long){ return 0; }
+long STDCALL mvx_acmMetrics(void*, unsigned, void*){ return 0; }
+long STDCALL mvx_acmStreamClose(void* has, unsigned long){ if(has) gsm_destroy((gsm)has); return 0; }
+long STDCALL mvx_acmStreamPrepareHeader(void*, void*, unsigned long){ return 0; }
+long STDCALL mvx_acmStreamOpen(void* phas, void*, void*, void*, void*, unsigned long, unsigned long, unsigned long){
+	gsm g = gsm_create();
+	int wav49 = 1; gsm_option(g, GSM_OPT_WAV49, &wav49);     // MS-GSM 65-byte block packing
+	if (phas) *(void**)phas = g;
+	return 0; }
+long STDCALL mvx_acmStreamConvert(void* has, void* pash, unsigned long){
+	gsm g = (gsm)has;
+	unsigned char* h = (unsigned char*)pash;
+	unsigned char* src    = *(unsigned char**)(h + 12);
+	unsigned int   srclen = *(unsigned int*)  (h + 16);
+	unsigned char* dst    = *(unsigned char**)(h + 28);
+	unsigned int   dstlen = *(unsigned int*)  (h + 32);
+	if (!g || !src || !dst) return 0;
+	unsigned int blocks = srclen / 65;                       // each 65-byte block -> 320 samples
+	if (blocks * 640 > dstlen) blocks = dstlen / 640;        // 320 samples * 2 bytes, clamp to dst
+	gsm_signal* out = (gsm_signal*)dst;
+	for (unsigned int b = 0; b < blocks; b++) {
+		gsm_decode(g, src + b*65,      out + b*320);         // 1st sub-frame: 33 bytes -> 160
+		gsm_decode(g, src + b*65 + 33, out + b*320 + 160);   // 2nd sub-frame: 32 bytes -> 160
+	}
+	*(unsigned int*)(h + 20) = blocks * 65;                  // cbSrcLengthUsed
+	*(unsigned int*)(h + 36) = blocks * 640;                 // cbDstLengthUsed
+	return 0; }
 }
 
 // the lib's "stop" flag; set by mvxSystem_Stop, watched by the PulseAudio drain thread

@@ -44,9 +44,10 @@ add_dependencies(chaos-theory mvx_convert)
 # the assembler files are 32-bit AT&T GAS
 set_source_files_properties(linux_mvx_fpu.s ${CMAKE_CURRENT_BINARY_DIR}/linux_mvx_blob.s
         PROPERTIES COMPILE_FLAGS "-m32")
-target_include_directories(chaos-theory PUBLIC ../port/include MinimalEngine ChaosTheory /usr/include/cairo)
+target_include_directories(chaos-theory PUBLIC ../port/include MinimalEngine ChaosTheory /usr/include/cairo
+        /usr/include/gdk-pixbuf-2.0 /usr/include/glib-2.0 /usr/lib32/glib-2.0/include /usr/include/pango-1.0 /usr/include/harfbuzz)
 target_compile_definitions(chaos-theory PUBLIC CONSPIRACY_LINUX)
 set_target_properties(chaos-theory PROPERTIES
         COMPILE_FLAGS "-m32 -fpermissive -fno-operator-names -w"
         LINK_FLAGS "-m32 -no-pie -Wl,--allow-multiple-definition")
-target_link_libraries(chaos-theory ${MVX_ELF} X11 GL GLU pulse pulse-simple pthread cairo jpeg)
+target_link_libraries(chaos-theory ${MVX_ELF} X11 GL GLU pulse pulse-simple pthread cairo gdk_pixbuf-2.0 gobject-2.0 glib-2.0 pangocairo-1.0 pango-1.0 gsm)
