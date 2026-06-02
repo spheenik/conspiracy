@@ -750,11 +750,9 @@ void text(texture &t, texturecommand incmnd)
 
     cairo_move_to(cr, incmnd.command[4], incmnd.command[5] + extents.height - extents.descent);
     cairo_show_text(cr, s);
+    cairo_surface_flush(surface);				// commit the drawing before reading pixels
 
     rgba *buf = (rgba *) cairo_image_surface_get_data(surface);
-
-    cairo_destroy(cr);
-    cairo_surface_destroy(surface);
 
 #if 0
     printf("text generation: pos:%u/%u, italic: %u, bold: %u, size: %u, font: %s, text: %s\n",
@@ -778,6 +776,9 @@ void text(texture &t, texturecommand incmnd)
             t.layers[incmnd.layer][zy][zx].b=(byte)(min(ss.b+t.layers[incmnd.layer][zy][zx].b,255.0));
         }
     #undef min
+
+    cairo_destroy(cr);
+    cairo_surface_destroy(surface);				// free only after the pixels are read
 
 #else
 
@@ -830,6 +831,7 @@ void text(texture &t, texturecommand incmnd)
 
 #endif
 
+    delete[] s;
 }
 
 void performcommand(texture &t, texturecommand incmnd)
