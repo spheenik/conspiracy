@@ -1,7 +1,11 @@
+#ifdef CONSPIRACY_LINUX
+#define GL_GLEXT_PROTOTYPES
+#endif
 #include "IntroWindow.h"
 
 #ifdef CONSPIRACY_LINUX
 #include <stdlib.h>
+#include <GL/glext.h>
 Display                 *dpy;
 Window                  root;
 XVisualInfo             *vi;
@@ -11,6 +15,27 @@ Window                  win;
 GLXContext              glc;
 XWindowAttributes       gwa;
 XEvent                  xev;
+
+// The intro renders into an offscreen FBO at the logical xres x yres, then
+// SwapBuffers() blits it into the real window preserving aspect (letterboxed),
+// so it fills a tiling-WM / oversized window correctly. (Same as ChaosTheory.)
+static GLuint   g_fbo = 0, g_fboColor = 0, g_fboDepth = 0;
+static int      g_winw = 0, g_winh = 0;     // actual window size, tracked via ConfigureNotify
+
+static void cnsCreateFBO(int w, int h)
+{
+    glGenFramebuffers(1, &g_fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, g_fbo);
+    glGenRenderbuffers(1, &g_fboColor);
+    glBindRenderbuffer(GL_RENDERBUFFER, g_fboColor);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, w, h);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, g_fboColor);
+    glGenRenderbuffers(1, &g_fboDepth);
+    glBindRenderbuffer(GL_RENDERBUFFER, g_fboDepth);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, w, h);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, g_fboDepth);
+    // leave the FBO bound: all subsequent rendering targets it
+}
 
 HDC			hDC=NULL;
 
@@ -76,7 +101,7 @@ BOOL Intro_CreateWindow(const char* title, int width, int height, int bits, bool
     cmap = XCreateColormap(dpy, root, vi->visual, AllocNone);
 
     swa.colormap = cmap;
-    swa.event_mask = KeyPressMask;
+    swa.event_mask = KeyPressMask | StructureNotifyMask;
 
     win = XCreateWindow(dpy, root, 0, 0, xres, yres, 0, vi->depth, InputOutput, vi->visual, CWColormap | CWEventMask, &swa);
 
@@ -86,6 +111,10 @@ BOOL Intro_CreateWindow(const char* title, int width, int height, int bits, bool
 
     glc = glXCreateContext(dpy, vi, NULL, GL_TRUE);
     glXMakeCurrent(dpy, win, glc);
+
+    g_winw = xres;
+    g_winh = yres;          // seeded; corrected by ConfigureNotify once the WM sizes us
+    cnsCreateFBO(xres, yres);
 
 #else
 	GLuint		PixelFormat;
@@ -196,15 +225,40 @@ BOOL Intro_CreateWindow(const char* title, int width, int height, int bits, bool
 
 #ifdef CONSPIRACY_LINUX
 void handleXevents() {
-    while (XCheckWindowEvent(dpy, win, KeyPressMask, &xev)) {
-        if (xev.xkey.keycode == 9) {
-            keys[27] = true;
+    while (XCheckWindowEvent(dpy, win, KeyPressMask | StructureNotifyMask, &xev)) {
+        if (xev.type == KeyPress) {
+            if (xev.xkey.keycode == 9) keys[27] = true;     // Escape
+        } else if (xev.type == ConfigureNotify) {
+            g_winw = xev.xconfigure.width;
+            g_winh = xev.xconfigure.height;
         }
     }
 }
 
 void SwapBuffers(HDC hdc) {
+    // Present the offscreen frame into the window, preserving the xres:yres
+    // aspect (centered, black bars) regardless of the actual window size.
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, g_fbo);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
+    glViewport(0, 0, g_winw, g_winh);
+    glDisable(GL_SCISSOR_TEST);
+    glClearColor(0, 0, 0, 0);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    float sx = (float)g_winw / (float)xres;
+    float sy = (float)g_winh / (float)yres;
+    float scale = sx < sy ? sx : sy;
+    int vw = (int)(xres * scale);
+    int vh = (int)(yres * scale);
+    int ox = (g_winw - vw) / 2;
+    int oy = (g_winh - vh) / 2;
+
+    glBlitFramebuffer(0, 0, xres, yres, ox, oy, ox + vw, oy + vh, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+
     glXSwapBuffers(dpy, win);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, g_fbo);   // back to offscreen for the next frame
 }
 #else
 LRESULT CALLBACK WndProc(	HWND	hWnd,
